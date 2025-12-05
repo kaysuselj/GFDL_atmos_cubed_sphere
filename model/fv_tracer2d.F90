@@ -82,6 +82,10 @@ public :: tracer_2d, tracer_2d_nested, tracer_2d_1L, offline_tracer_advection
 
 real, allocatable, dimension(:,:,:) :: nest_fx_west_accum, nest_fx_east_accum, nest_fx_south_accum, nest_fx_north_accum
 
+! GCHP: parameters rescale_trop_only and show_scaling
+logical, parameter :: rescale_trop_only=.True.
+logical, parameter :: show_scaling=.False.
+
 contains
 
 !>@brief The subroutine 'tracer_2d_1L' performs 2-D horizontal-to-lagrangian transport.
@@ -870,7 +874,7 @@ subroutine tracer_2d_nested(q, dp1, mfx, mfy, cx, cy, gridstruct, bd, domain, np
 subroutine offline_tracer_advection(q, pleB, pleA, mfx, mfy, cx, cy, &
                                     gridstruct, flagstruct, bd, domain, &
                                     npx, npy, npz,   &
-                                    nq, dt, q_split)
+                                    nq, dt, q_split, pleadv) ! GCHP: added argument pleadv
 
       use fv_mapz_mod,        only: mapn_tracer
       use fv_fill_mod,        only: fillz
@@ -893,6 +897,10 @@ subroutine offline_tracer_advection(q, pleB, pleA, mfx, mfy, cx, cy, &
       real, intent(IN   ) :: mfx(bd%is:bd%ie,bd%js:bd%je,npz)        ! Mass Flux X-Dir
       real, intent(IN   ) :: mfy(bd%is:bd%ie,bd%js:bd%je,npz)        ! Mass Flux Y-Dir
       real, intent(INOUT) ::   q(bd%is:bd%ie,bd%js:bd%je,npz,nq)     ! Tracers
+
+      ! GCHP: add optional argument pleadv
+      real, optional, intent(OUT) :: pleadv(bd%is:bd%ie,bd%js:bd%je,npz+1) ! DELP after adv_core
+
 ! Local Arrays
       real ::   xL(bd%isd:bd%ied+1,bd%jsd:bd%jed  ,npz)  ! X-Dir for MPP Updates
       real ::   yL(bd%isd:bd%ied  ,bd%jsd:bd%jed+1,npz)  ! Y-Dir for MPP Updates
@@ -921,6 +929,9 @@ subroutine offline_tracer_advection(q, pleB, pleA, mfx, mfy, cx, cy, &
       integer     :: i,j,k,n,iq
 
       real :: scalingFactor
+
+      ! GCHP: define kStart
+      integer :: kStart
 
       type(group_halo_update_type), save :: i_pack
 
@@ -978,9 +989,39 @@ subroutine offline_tracer_advection(q, pleB, pleA, mfx, mfy, cx, cy, &
                         flagstruct%nord_tr, flagstruct%trdm2, flagstruct%lim_fac, dpA=dpA)
     endif
 
+    ! ewl todo: ptop is no longer passed to offline_tracer_advection
+    ! Need to add it back in, and define within AdvCore_GridCompMod
+    ! For now, hard-code here (temporary!) to what is in DynCore_GridCompMod.F90
+    ! NOTE: ptop might now be the same as pleB(:,:,1), or would it be PLEA(:,:,1)?
+    ! GCHP: Build post-advection pressure edges if requested
+    if (present(pleadv)) then
+       pleadv(:,:,1) = 25499.234876157 ! Model top pressure in Pa (ptop)
+       do k=2,npz+1
+          pleadv(:,:,k) = pleadv(:,:,k-1) + dpA(:,:,k-1)
+       end do
+    end if
+
 !------------------------------------------------------------------
 ! Re-Map constituents
 !------------------------------------------------------------------
+
+    ! ewl: bk is no longer passed in. Will need an alternate way to determine min k
+    ! in troposphere. Or add it back as an argument. If kstart is always the same,
+    ! then why not pass that as an argument instead?
+    ! For now, hard-code to 41 based on GEOS 72-level grid BP values in GEOS-Chem
+    ! Note that k is positive down, so bk is reverse of GEOS-Chem BP
+    ! GCHP: rescale trop only
+    kStart = 41
+    !kStart = 0
+    !if (rescale_trop_only) then
+    !   do k=1,npz
+    !      if ((kStart.le.0).and.(bk(k+1).gt.0.d0)) then
+    !         kStart=k
+    !         exit
+    !      end if
+    !   end do
+    !end if
+
        kord_tracers = flagstruct%kord_tr
 !$OMP parallel do default(none) shared(is,ie,isd,ied,js,je,jsd,jed,npz,nq, &
 !$OMP                                  pleB,dpA,pleA,q3,flagstruct,kord_tracers) &
@@ -1005,15 +1046,115 @@ subroutine offline_tracer_advection(q, pleB, pleA, mfx, mfy, cx, cy, &
 
        ! Rescale tracers based on pleA at destination timestep
        !------------------------------------------------------
-       do iq=1,nq
-            ! Scale tracers
-            !---------------
-            scalingFactor = calcScalingFactor(q(is:ie,js:je,1:npz,iq), q3(is:ie,js:je,1:npz,iq), pleB, pleA, &
-                              npz, domain, gridstruct, flagstruct, bd)
-            q(is:ie,js:je,1:npz,iq) = q3(is:ie,js:je,1:npz,iq) * scalingFactor
-       enddo
+       ! GCHP: rescale trop only
+       if (rescale_trop_only) then
+          do iq=1,nq
+               ! Scale tracers
+               !---------------
+               scalingFactor = calcScalingFactorTrop(q(is:ie,js:je,1:npz,iq), q3(is:ie,js:je,1:npz,iq), pleB, pleA, &
+                                 npz, domain, gridstruct, flagstruct, kstart, bd)
+               q(is:ie,js:je,1:(kStart-1),iq) = q3(is:ie,js:je,1:(kStart-1),iq)
+               q(is:ie,js:je,kStart:npz,iq) = q3(is:ie,js:je,kStart:npz,iq) * scalingFactor
+               if (show_scaling.and.is_master()) then
+                  write(*,'(a,I3,a,E16.5E4)') ' FV3 scaling error for tracer ', iq, ': ', &
+                      (scalingFactor - 1.0)
+               end if
+          enddo
+       else
+          do iq=1,nq
+               ! Scale tracers
+               !---------------
+               scalingFactor = calcScalingFactor(q(is:ie,js:je,1:npz,iq), q3(is:ie,js:je,1:npz,iq), pleB, pleA, &
+                                 npz, domain, gridstruct, flagstruct, bd)
+               q(is:ie,js:je,1:npz,iq) = q3(is:ie,js:je,1:npz,iq) * scalingFactor
+               if (show_scaling.and.is_master()) then
+                  write(*,'(a,I3,a,E16.5E4)') ' FV3 scaling error for tracer ', iq, ': ', &
+                      (scalingFactor - 1.0)
+               end if
+          enddo
+       endif
 
 end subroutine offline_tracer_advection
+
+!------------------------------------------------------------------------------------
+
+         ! Added for GCHP to limit scaling to troposphere
+         ! This is a copy of function calcScalingFactor except where differences are noted
+         function calcScalingFactorTrop(q1, q2, ple1, ple2, npz, domain, gridstruct, flagstruct, kstart, bd) result(scaling)
+         integer, intent(in) :: npz
+         integer, intent(in) :: kstart
+         type(fv_grid_bounds_type), intent(IN   ) :: bd
+         real, intent(in) :: q1(bd%is:bd%ie,bd%js:bd%je,npz)
+         real, intent(in) :: q2(bd%is:bd%ie,bd%js:bd%je,npz)
+         real, intent(in) :: ple1(bd%is:bd%ie,bd%js:bd%je,npz+1)
+         real, intent(in) :: ple2(bd%is:bd%ie,bd%js:bd%je,npz+1)
+         type(domain2D), intent(INOUT) :: domain
+         type(fv_grid_type), intent(IN   ) :: gridstruct
+         type(fv_flags_type), intent(INOUT) :: flagstruct
+         integer :: sflag
+         real :: scaling
+
+         integer :: k
+         real(REAL8)     :: qsum1(bd%is:bd%ie,bd%js:bd%je)
+         real(REAL8)     :: qsum2(bd%is:bd%ie,bd%js:bd%je)
+         real(REAL8)     :: qsum3(bd%is:bd%ie,bd%js:bd%je)
+         real(REAL8)     :: tempsum(bd%is:bd%ie,bd%js:bd%je)
+         real(REAL8)     :: globalSums(3)
+         real(REAL8), parameter :: TINY_DENOMINATOR = tiny(1.d0)
+         real(REAL8)     :: scalingR8
+
+         !-------
+         ! Compute partial sum on local array first to minimize communication.
+         ! This algorithm will not be strongly repdroducible under changes do domain
+         ! decomposition, but uses far less communication bandwidth (and memory BW)
+         ! then the preceding implementation.
+         !-------
+         qsum1(:,:) = 0.d0
+         qsum2(:,:) = 0.d0
+         qsum3(:,:) = 0.d0
+         tempSum(:,:) = 0.d0
+         do k=1,npz
+            qsum1(:,:) = qsum1(:,:) + q1(:,:,k) * (ple1(:,:,k+1)-ple1(:,:,k))
+            tempSum(:,:) = q2(:,:,k) * (ple2(:,:,k+1)-ple2(:,:,k))
+            qsum2(:,:) = qsum2(:,:) + tempSum
+            if (k.lt.kStart) then
+               ! In stratosphere
+               qsum3(:,:) = qsum3(:,:) + tempSum
+            endif
+         enddo
+
+         ! Get total pre-advection mass, total post-advection mass, and total
+         ! stratospheric mass after advection
+
+         ! numerator: total mass based on advected air
+         globalSums(1) = g_sum_r8(domain, qsum1, bd%is,bd%ie, bd%js,bd%je, 0, &
+                                  gridstruct%area_64(bd%is:bd%ie,bd%js:bd%je), 1)
+
+         ! denominator: total mass based on met field pressures after advection
+         globalSums(2) = g_sum_r8(domain, qsum2, bd%is,bd%ie, bd%js,bd%je, 0, &
+                                  gridstruct%area_64(bd%is:bd%ie,bd%js:bd%je), 1)
+
+         ! Total stratospheric mass after advection
+         globalSums(3) = g_sum_r8(domain, qsum3, bd%is,bd%ie, bd%js,bd%je, 0, &
+                                  gridstruct%area_64(bd%is:bd%ie,bd%js:bd%je), 1)
+
+         ! Subtract stratospheric mass
+         globalSums(1) = globalSums(1) - globalSums(3)
+         globalSums(2) = globalSums(2) - globalSums(3)
+
+         if (globalSums(2) > TINY_DENOMINATOR) then
+            scalingR8 =  globalSums(1) / globalSums(2)
+            !#################################################################
+            ! This line was added to ensure strong reproducibility of the code
+            ! SDE 2017-02-17: Disabled as it compromises mass conservation
+            ! EWL TODO: Is this still true?
+            !#################################################################
+            !scaling = REAL(scalingR8, KIND=kind(1.00))
+         else
+            scaling = 1.0
+         end if
+
+         end function calcScalingFactorTrop
 
 !------------------------------------------------------------------------------------
 
