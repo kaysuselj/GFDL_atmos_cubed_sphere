@@ -62,7 +62,9 @@ elseif (FV_PRECISION STREQUAL R4R8) # FV is R4 but FMS is R8
   target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
   target_link_libraries (${this} PUBLIC FMS::fms_r8)
 elseif (FV_PRECISION STREQUAL R8)
-  target_link_libraries (${this} PUBLIC FMS::fms_r8)
+  # GCHP: replace FMS::fms_r8 with just fms_r8 sincle not built externally
+  #target_link_libraries (${this} PUBLIC FMS::fms_r8)
+  target_link_libraries (${this} PUBLIC fms_r8)
   string(REPLACE " " ";" tmp ${FREAL8})
   foreach(flag ${tmp})
     target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
