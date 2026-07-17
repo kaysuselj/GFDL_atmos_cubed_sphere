@@ -886,7 +886,7 @@ module fv_arrays_mod
                                 !<     1: GMAO linear
                                 !<     2: GMAO quadratic
                                 !<     3: GMAO cubic
- 
+
    logical :: gmao_top_bc = .false.  !< Optional upper BC in remapping of T or TE from GMAO (true or false)
 
    logical :: gmao_bot_bc = .false.  !< Optional lower BC in remapping of T or TE from GMAO (true or false)
@@ -1527,6 +1527,7 @@ contains
 #else
       allocate ( Atm%q_con(isd:isd,jsd:jsd,1) )
 #endif
+      Atm%q_con = 0.
 
 #ifndef NO_TOUCH_MEM
 ! Notes by SJL

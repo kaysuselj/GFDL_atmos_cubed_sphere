@@ -481,8 +481,8 @@ contains
 
       integer            :: filetype
       logical            :: isNC4
-      type(Netcdf4_Fileformatter) :: formatter
-      type(FileMetadata), allocatable :: cfg(:)
+      type(mapl_Netcdf4_Fileformatter) :: formatter
+      type(mapl_FileMetadata), allocatable :: cfg(:)
       integer            :: nDims, nVars, ivar, dimSizes(3)
       character(len=128) :: vname
       real(FVPRC),   allocatable  :: gslice_r4(:,:)
@@ -490,8 +490,8 @@ contains
       integer            :: tileoff,lvar_cnt
       character(len=128), allocatable :: vnames(:)
       character(len=:), pointer :: var_name
-      type(StringVariableMap), pointer :: vars
-      type(StringVariableMapIterator) :: iter
+      type(mapl_StringVariableMap), pointer :: vars
+      type(mapl_StringVariableMapIterator) :: iter
 
 
 !bma added
@@ -529,7 +529,7 @@ contains
          if (isNC4) then
 
             allocate(cfg(1))
-            call formatter%open(fname,pFIO_READ,rc=status)
+            call formatter%open(fname,MAPL_PFIO_READ,rc=status)
             cfg(1) = formatter%read(rc=status)
             im =cfg(1)%get_dimension('lon',rc=status)
             jm =cfg(1)%get_dimension('lat',rc=status)
@@ -810,7 +810,7 @@ contains
                lvar_cnt = 0
                allocate(gslice_r4(im,jm))
                allocate(cfg(1))
-               call formatter%open("moist_internal_restart_in",pFIO_READ,rc=status)
+               call formatter%open("moist_internal_restart_in",MAPL_PFIO_READ,rc=status)
                cfg(1) = formatter%read(rc=status)
                call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= iq_moist1-iq_moist0+1) call mpp_error(FATAL,'Wrong number of variables in moist file') 
@@ -867,7 +867,7 @@ contains
                lvar_cnt = 0 
                allocate(gslice_r4(im,jm))
                allocate(cfg(1))
-               call formatter%open("gocart_internal_restart_in",pFIO_READ,rc=status)
+               call formatter%open("gocart_internal_restart_in",MAPL_PFIO_READ,rc=status)
                cfg(1) = formatter%read(rc=status)
                call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= iq_gocart1-iq_gocart0+1) call mpp_error(FATAL,'Wrong number of variables in gocart file') 
@@ -937,7 +937,7 @@ contains
                lvar_cnt = 0 
                allocate(gslice_r4(im,jm))
                allocate(cfg(1))
-               call formatter%open("pchem_internal_restart_in",pFIO_READ,rc=status)
+               call formatter%open("pchem_internal_restart_in",MAPL_PFIO_READ,rc=status)
                cfg(1) = formatter%read(rc=status)
                call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= iq_pchem1-iq_pchem0+1) call mpp_error(FATAL,'Wrong number of variables in pchem file') 
@@ -1102,12 +1102,12 @@ contains
       integer :: iq_gocart0, iq_gocart1
       integer :: iq_pchem0 , iq_pchem1
       integer :: lvar_cnt
-      type(Netcdf4_Fileformatter) :: formatter
-      type(FileMetadata), allocatable :: cfg(:)
+      type(mapl_Netcdf4_Fileformatter) :: formatter
+      type(mapl_FileMetadata), allocatable :: cfg(:)
       character(len=128), allocatable :: vnames(:)
       character(len=:), pointer :: var_name
-      type(StringVariableMap), pointer :: vars
-      type(StringVariableMapIterator) :: iter
+      type(mapl_StringVariableMap), pointer :: vars
+      type(mapl_StringVariableMapIterator) :: iter
 
 
 !bma added
@@ -1144,7 +1144,7 @@ contains
          if (isNC4) then
 
             allocate(cfg(1))
-            call formatter%open(fname,pFIO_READ,rc=status)
+            call formatter%open(fname,MAPL_PFIO_READ,rc=status)
             cfg(1) = formatter%read(rc=status)
             im =cfg(1)%get_dimension('lon',rc=status)
             jm =cfg(1)%get_dimension('lat',rc=status)
@@ -1391,7 +1391,7 @@ contains
                open(IUNIT,file="moist_internal_restart_in" ,access='sequential',form='unformatted',status='old')
             else
                lvar_cnt = 0
-               call formatter%open("moist_internal_restart_in",pFIO_READ,rc=status)
+               call formatter%open("moist_internal_restart_in",MAPL_PFIO_READ,rc=status)
                cfg = formatter%read(rc=status)
                call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= iq_moist1-iq_moist0+1) call mpp_error(FATAL,'Wrong number of variables in moist file')
@@ -1444,7 +1444,7 @@ contains
             else
                lvar_cnt = 0
                allocate(cfg(1))
-               call formatter%open("gocart_internal_restart_in",pFIO_READ,rc=status)
+               call formatter%open("gocart_internal_restart_in",MAPL_PFIO_READ,rc=status)
                cfg(1) = formatter%read(rc=status)
                call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= iq_gocart1-iq_gocart0+1) call mpp_error(FATAL,'Wrong number of variables in gocart file')
@@ -1512,7 +1512,7 @@ contains
             else
                lvar_cnt = 0
                allocate(cfg(1))
-               call formatter%open("pchem_internal_restart_in",pFIO_READ,rc=status)
+               call formatter%open("pchem_internal_restart_in",MAPL_PFIO_READ,rc=status)
                cfg(1) = formatter%read(rc=status)
                call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= iq_pchem1-iq_pchem0+1) call mpp_error(FATAL,'Wrong number of variables in pchem file')

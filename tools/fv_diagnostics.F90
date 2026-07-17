@@ -177,7 +177,7 @@ module fv_diagnostics_mod
  public :: prt_height, prt_gb_nh_sh, interpolate_vertical, rh_calc, get_height_field
 
 #ifdef MAPL_MODE
- public :: updraft_helicity, get_vorticity, bunkers_vector, helicity_relative_CAPS
+ public :: updraft_helicity, get_vorticity, calculate_shear_06, bunkers_vector, helicity_relative_CAPS
 #endif
 
  integer, parameter :: nplev = 31
@@ -4056,6 +4056,70 @@ contains
 
  end subroutine helicity_relative_CAPS
 
+ subroutine calculate_shear_06(is, ie, js, je, ng, km, zvir, sphum, shear_06, &
+                               ua, va, delz, q, hydrostatic, pt, peln, grav)
+
+   integer, intent(in):: is, ie, js, je, ng, km, sphum
+   real, intent(in):: grav, zvir
+   real, intent(in), dimension(is-ng:ie+ng,js-ng:je+ng,km):: pt, ua, va
+   real, intent(in):: delz(is-ng:ie+ng,js-ng:je+ng,km)
+   real, intent(in):: q(is-ng:ie+ng,js-ng:je+ng,km,*)
+   real, intent(in):: peln(is:ie,km+1,js:je)
+   logical, intent(in):: hydrostatic
+   real, intent(out):: shear_06(is:ie,js:je)
+
+   real :: rdg, zh, dz, usfc, vsfc, u6km, v6km, ushr, vshr
+   integer :: i, j, k
+
+   rdg = rdgas / grav
+
+!$OMP parallel do default(none) shared(is,ie,js,je,km,hydrostatic,rdg,pt,zvir,sphum, &
+!$OMP                                  peln,delz,ua,va,shear_06) &
+!$OMP                           private(zh,dz,usfc,vsfc,u6km,v6km,ushr,vshr)
+   do j=js,je
+      do i=is,ie
+         zh = 0.
+         usfc = ua(i,j,km)
+         vsfc = va(i,j,km)
+         u6km = usfc
+         v6km = vsfc
+
+         do k=km,1,-1
+            if ( hydrostatic ) then
+                 dz = rdg*pt(i,j,k)*(1.+zvir*q(i,j,k,sphum))*(peln(i,k+1,j)-peln(i,k,j))
+            else
+                 dz = -delz(i,j,k)
+            endif
+            zh = zh + dz
+
+            if (zh >= 6000.) then
+                ! zh is height at top of level k
+                ! (zh - dz) is height at bottom of level k
+                ! We interpolate between k+1 (bottom) and k (top)
+                u6km = ua(i,j,min(k+1,km)) + (ua(i,j,k) - ua(i,j,min(k+1,km))) / &
+                       dz * (6000. - (zh - dz))
+                v6km = va(i,j,min(k+1,km)) + (va(i,j,k) - va(i,j,min(k+1,km))) / &
+                       dz * (6000. - (zh - dz))
+                goto 456
+            endif
+ 
+            ! If we haven't hit 6km yet, keep most recent wind as a fallback
+            u6km = ua(i,j,k)
+            v6km = va(i,j,k)
+         enddo
+         
+456      continue
+
+         ushr = u6km - usfc
+         vshr = v6km - vsfc
+         
+         ! Result is the magnitude of the 0-6km bulk shear vector
+         shear_06(i,j) = sqrt(ushr*ushr + vshr*vshr)
+
+      enddo
+   enddo
+
+ end subroutine calculate_shear_06
 
  subroutine bunkers_vector(is, ie, js, je, ng, km, zvir, sphum, uc, vc,  &
                            ua, va, delz, q, hydrostatic, pt, peln, phis, grav)

@@ -49,18 +49,19 @@ esma_add_library (${this}
   DEPENDENCIES MAPL GFTL_SHARED::gftl-shared-v2 esmf)
 
 if (FV_PRECISION STREQUAL R4)
-elseif (FV_PRECISION STREQUAL R4R8) # FV is R4 but FMS is R8
-  get_target_property (extra_incs FMS::fms_r4 INTERFACE_INCLUDE_DIRECTORIES)
-  target_include_directories(${this} PRIVATE $<BUILD_INTERFACE:${extra_incs}>)
-elseif (FV_PRECISION STREQUAL R8)
-endif ()
-
-if (FV_PRECISION STREQUAL R4)
-  target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
   target_link_libraries (${this} PUBLIC FMS::fms_r4)
+  target_compile_definitions (${this} PRIVATE SINGLE_FV OVERLOAD_R4)
 elseif (FV_PRECISION STREQUAL R4R8) # FV is R4 but FMS is R8
-  target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
-  target_link_libraries (${this} PUBLIC FMS::fms_r8)
+  # fvdycore needs r4 .mod interfaces
+  get_target_property(inc_r4 FMS::fms_r4 INTERFACE_INCLUDE_DIRECTORIES)
+  target_include_directories(${this} PRIVATE $<BUILD_INTERFACE:${inc_r4}>)
+
+  # But fvdycore should not *compile* with FMS::fms_r8 includes
+  target_link_libraries(${this} PUBLIC $<LINK_ONLY:FMS::fms_r8>)
+
+  target_compile_definitions (${this} PRIVATE SINGLE_FV OVERLOAD_R4)
+
+  add_dependencies(${this} FMS::fms_r4 FMS::fms_r8)
 elseif (FV_PRECISION STREQUAL R8)
   # GCHP: replace FMS::fms_r8 with just fms_r8 sincle not built externally
   #target_link_libraries (${this} PUBLIC FMS::fms_r8)

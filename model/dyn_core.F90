@@ -258,7 +258,6 @@ contains
 ! new array for stochastic kinetic energy backscatter (SKEB)
     real diss_e(bd%is:bd%ie,bd%js:bd%je)
     real damp_vt(npz+1)
-    real dddmp(npz+1)
     real d_ext(npz+1)
     integer nord_v(npz+1)
 !-------------------------------------
@@ -268,7 +267,7 @@ contains
 !---------------------------------------
     integer :: i,j,k, it, iq, n_con, nf_ke
     integer :: iep1, jep1
-    real    :: beta, beta_d, damp_w, damp_t, kgb, cv_air
+    real    :: beta, beta_d, d_con_k, damp_w, damp_t, kgb, cv_air
     real    :: dt, dt2, rdt
     real    :: d2_divg
     real    :: k1k, rdg, dtmp, delt
@@ -678,12 +677,16 @@ contains
 ! higher order hyper-diffusion on divergence
      if ( .not. d4dmp_initialized ) then
         allocate( d4dmp(npz) )
-        ! High order divergence damping coefs (less diffusion in the troposphere)
-        do k=1,npz
-          d4dmp(k) = MAX(0.0,MIN(1.0,SIN(0.5*pi*LOG(25000.0/pfull(k))/LOG(25000.0/ptop))))
-          d4dmp(k) = flagstruct%d4_bg_top*d4dmp(k) + flagstruct%d4_bg_bot*(1.0-d4dmp(k))
-        end do
-        d4dmp_initialized = .true.
+        if ( .not. hydrostatic ) then
+            ! High order divergence damping coefs (less diffusion in the troposphere)
+            do k=1,npz
+               d4dmp(k) = MAX(0.0,MIN(1.0,SIN(0.5*pi*LOG(25000.0/pfull(k))/LOG(25000.0/ptop))))
+               d4dmp(k) = flagstruct%d4_bg_top*d4dmp(k) + flagstruct%d4_bg_bot*(1.0-d4dmp(k))
+            end do
+         else
+            d4dmp(:) = flagstruct%d4_bg_top
+         endif
+         d4dmp_initialized = .true.
      endif
 
                                                      call timing_on('d_sw')
@@ -691,9 +694,9 @@ contains
 !$OMP                                  is,ie,js,je,isd,ied,jsd,jed,omga,delp,gridstruct,npx,npy,  &
 !$OMP                                  ng,zh,vt,ptc,pt,u,v,w,uc,vc,ua,va,divgd,mfx,mfy,cx,cy,     &
 !$OMP                                  crx,cry,xfx,yfx,q_con,zvir,sphum,nq,q,dt,bd,rdt,iep1,jep1, &
-!$OMP                                  heat_source,diss_est,dpx,dddmp,d_ext,d4dmp)                      &
+!$OMP                                  heat_source,diss_est,dpx,d_ext,d4dmp)                      &
 !$OMP                          private(nord_k, nord_w, nord_t, damp_w, damp_t, d2_divg, kfac, &
-!$OMP                          kgb, hord_m, hord_v, hord_t, hord_p, wk, heat_s,diss_e, z_rat)
+!$OMP                          d_con_k, kgb, hord_m, hord_v, hord_t, hord_p, wk, heat_s,diss_e, z_rat)
     do k=1,npz
        hord_m = flagstruct%hord_mt
        hord_t = flagstruct%hord_tm
@@ -723,13 +726,12 @@ contains
        damp_w = damp_vt(k)
        damp_t = damp_vt(k)
 ! External diffusion only in RI Z-Filter levels
-       if ( npz==1 .or. k<=flagstruct%n_zfilter ) then
+       if ( npz==1 .or. k<=flagstruct%n_zfilter .or. hydrostatic ) then
           d_ext(k) = flagstruct%d_ext 
        else
           d_ext(k) = 0.0
        endif
-! Smagorinsky diffusion
-       dddmp(k) = flagstruct%dddmp
+       d_con_k = flagstruct%d_con
 
        if ( npz==1 .or. flagstruct%n_sponge<=0 ) then
            d2_divg = flagstruct%d2_bg
@@ -746,6 +748,7 @@ contains
                         nord_v(k)=0; 
                         damp_vt(k) = 0.5*d2_divg
                    endif
+                   d_con_k = 0.
               elseif ( k<=MAX(2,flagstruct%n_sponge-1) .and. flagstruct%d2_bg_k2>0.01 ) then
                    nord_k=0; d2_divg = max(flagstruct%d2_bg, flagstruct%d2_bg_k2)
                    nord_w=0; damp_w = d2_divg
@@ -753,9 +756,11 @@ contains
                         nord_v(k)=0; 
                         damp_vt(k) = 0.5*d2_divg
                    endif
+                   d_con_k = 0.
               elseif ( k<=MAX(3,flagstruct%n_sponge) .and. flagstruct%d2_bg_k2>0.05 ) then
                    nord_k=0;  d2_divg = max(flagstruct%d2_bg, 0.2*flagstruct%d2_bg_k2)
                    nord_w=0;  damp_w = d2_divg
+                   d_con_k = 0.
               endif
        endif
 
@@ -793,8 +798,8 @@ contains
 #endif
                   kgb, heat_s, diss_e, dpx(is,js,k), zvir, sphum, nq,  q,  k,  npz, flagstruct%inline_q,  dt,  &
                   flagstruct%hord_tr, hord_m, hord_v, hord_t, hord_p,    &
-                  nord_k, nord_v(k), nord_w, nord_t, dddmp(k), d2_divg, d4dmp(k),  &
-                  damp_vt(k), damp_w, damp_t, flagstruct%d_con, hydrostatic, gridstruct, flagstruct, bd)
+                  nord_k, nord_v(k), nord_w, nord_t, flagstruct%dddmp, d2_divg, d4dmp(k),  &
+                  damp_vt(k), damp_w, damp_t, d_con_k, hydrostatic, gridstruct, flagstruct, bd)
 
        if( (.not.flagstruct%use_old_omega) .and. last_step ) then
 ! Average horizontal "convergence" to cell center
@@ -828,6 +833,9 @@ contains
                                                      call timing_off('d_sw')
 
     if( flagstruct%fill_dp ) call mix_dp(hydrostatic, w, delp, pt, npz, ak, bk, .false., flagstruct%fv_debug, bd)
+
+    if ( flagstruct%fv_debug ) &
+    call prt_mxm('W_mix ', w, is, ie  , js, je  , ng, npz, 1., gridstruct%area_64, domain)
 
                                                              call timing_on('COMM_TOTAL')
                                                              call timing_on('COMM_DSW')
@@ -897,6 +905,10 @@ contains
         call update_dz_d(nord_v, damp_vt, flagstruct%hord_tm, is, ie, js, je, npz, ng, npx, npy, gridstruct%area,  &
                          gridstruct%rarea, dp_ref, zs, zh, crx, cry, xfx, yfx, delz, ws, rdt, flagstruct%dz_min, gridstruct, bd, flagstruct%lim_fac)
                                             call timing_off('UPDATE_DZ')
+
+        if ( flagstruct%fv_debug ) &
+        call prt_mxm('WS_dzd', ws, is, ie  , js, je  , 0, 1, 1., gridstruct%area_64, domain)
+
 
         if (idiag%id_ws>0 .and. last_step) then
             used=send_data(idiag%id_ws, ws, fv_time)
@@ -2114,6 +2126,8 @@ do 1000 j=jfirst,jlast
    ! !DESCRIPTION:
    !    Calculates geopotential and pressure to the kappa.
    ! Local:
+   real peg(bd%isd:bd%ied,km+1)
+   real pkg(bd%isd:bd%ied,km+1)
    real(kind=8) p1d(bd%isd:bd%ied)
    real(kind=8) g1d(bd%isd:bd%ied)
    real logp(bd%isd:bd%ied)
@@ -2150,7 +2164,7 @@ do 1000 j=jfirst,jlast
 
 !$OMP parallel do default(none) shared(jfirst,jlast,ifirst,ilast,pk,km,gz,hs,ptop,ptk, &
 !$OMP                                  js,je,is,ie,peln,peln1,pe,delp,akap,pt,CG,pkz,q_con) &
-!$OMP                          private(p1d, g1d, logp)
+!$OMP                          private(peg, pkg, p1d, g1d, logp)
    do 2000 j=jfirst,jlast
 
       do i=ifirst, ilast
@@ -2158,6 +2172,10 @@ do 1000 j=jfirst,jlast
          pk(i,j,1) = ptk
          g1d(i) = hs(i,j)
          gz(i,j,km+1) = hs(i,j)
+#ifdef USE_COND
+         peg(i,1) = ptop
+         pkg(i,1) = ptk
+#endif
       enddo
 
 #ifndef SW_DYNAMICS
@@ -2180,6 +2198,10 @@ do 1000 j=jfirst,jlast
             p1d(i)  = p1d(i) + delp(i,j,k-1)
             logp(i) = log(p1d(i))
             pk(i,j,k) = exp( akap*logp(i) ) 
+#ifdef USE_COND
+            peg(i,k) = peg(i,k-1) + delp(i,j,k-1)*(1.-q_con(i,j,k-1))
+            pkg(i,k) = exp( akap*log(peg(i,k)) )
+#endif
          enddo
 
          if( j>(js-2) .and. j<(je+2) ) then
@@ -2201,7 +2223,11 @@ do 1000 j=jfirst,jlast
 #ifdef SW_DYNAMICS
             g1d(i) = g1d(i) + pt(i,j,k)*(pk(i,j,k+1)-pk(i,j,k))
 #else
+#ifdef USE_COND
+            g1d(i) = g1d(i) + cp_air*pt(i,j,k)*(pkg(i,k+1)-pkg(i,k))
+#else
             g1d(i) = g1d(i) + cp_air*pt(i,j,k)*(pk(i,j,k+1)-pk(i,j,k))
+#endif
 #endif
             gz(i,j,k) = g1d(i)
          enddo
