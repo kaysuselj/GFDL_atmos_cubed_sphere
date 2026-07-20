@@ -57,6 +57,12 @@ module tp_core_mod
 
  private
  public fv_tp_2d, pert_ppm, copy_corners
+#ifdef ADJOINT
+! Flag set by offline_tracer_advection so that xppm/yppm use ghost-cell boundary stencils
+! in adjoint (reversed-wind) mode.  Only active when dt<0; zeroed after each PPM call.
+ logical, save :: tp_core_is_adjoint = .false.
+ public tp_core_is_adjoint
+#endif
 
  real, parameter:: ppm_fac = 1.5   !< nonlinear scheme limiter: between 1 and 2
  real, parameter:: r3 = 1./3.
@@ -414,13 +420,40 @@ contains
 !DEC$ VECTOR ALWAYS
       do i=is,ie+1
          xt = c(i,j)
-         if ( xt > 0. ) then
-              qtmp = q1(i-1)
-              flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp)))  
+#ifdef ADJOINT
+         ! In adjoint (reversed-wind) mode, the standard formula misuses interior al() at
+         ! face boundaries where the forward PPM used ghost-cell al() values.  Replace the
+         ! stencil at the two boundary faces so that ghost cells are used symmetrically.
+         if (tp_core_is_adjoint .and. .not.nested .and. grid_type<3) then
+            if (i==is .and. is==1 .and. xt < 0.) then
+               ! Left face, adjoint c<0 (= forward c>0): use ghost-cell al(i-1)=al(0) and
+               ! qtmp=q1(i-1)=q1(0) to mirror the forward PPM's c>0 stencil at this face.
+               qtmp = q1(i-1)
+               flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i-1)+al(i)-(qtmp+qtmp)))
+            else if (i==ie+1 .and. (ie+1)==npx .and. xt > 0.) then
+               ! Right face, adjoint c>0 (= forward c<0): use ghost-cell al(i+1)=al(npx+1)
+               ! to mirror the forward PPM's c<0 stencil that depended on ghost cells.
+               qtmp = q1(i-1)
+               flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i)+al(i+1)-(qtmp+qtmp)))
+            else if ( xt > 0. ) then
+               qtmp = q1(i-1)
+               flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp)))
+            else
+               qtmp = q1(i)
+               flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i)+al(i+1)-(qtmp+qtmp)))
+            endif
          else
-              qtmp = q1(i)
-              flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i)+al(i+1)-(qtmp+qtmp)))  
-         endif
+#endif
+            if ( xt > 0. ) then
+                 qtmp = q1(i-1)
+                 flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp)))
+            else
+                 qtmp = q1(i)
+                 flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i)+al(i+1)-(qtmp+qtmp)))
+            endif
+#ifdef ADJOINT
+         end if
+#endif
 !        x0 = sign(dim(xt, 0.), 1.)
 !        x1 = sign(dim(0., xt), 1.)
 !        flux(i,j) = x0*(q1(i-1)+(1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp))))     &
@@ -731,13 +764,36 @@ if ( jord < 8 ) then
 !DEC$ VECTOR ALWAYS
          do i=ifirst,ilast
             xt = c(i,j)
-            if ( xt > 0. ) then
-                 qtmp = q(i,j-1)
-                 flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
+#ifdef ADJOINT
+            ! In adjoint mode, use ghost-cell stencils at face boundaries (same fix as xppm).
+            if (tp_core_is_adjoint .and. .not.nested .and. grid_type<3) then
+               if (j==js .and. js==1 .and. xt < 0.) then
+                  ! Bottom face, adjoint c<0 (= forward c>0): use ghost al(i,j-1)=al(i,0).
+                  qtmp = q(i,j-1)
+                  flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
+               else if (j==je+1 .and. (je+1)==npy .and. xt > 0.) then
+                  ! Top face, adjoint c>0 (= forward c<0): use ghost al(i,j+1)=al(i,npy+1).
+                  qtmp = q(i,j-1)
+                  flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
+               else if (xt > 0.) then
+                  qtmp = q(i,j-1)
+                  flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
+               else
+                  qtmp = q(i,j)
+                  flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
+               endif
             else
-                 qtmp = q(i,j)
-                 flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
-            endif
+#endif
+               if ( xt > 0. ) then
+                    qtmp = q(i,j-1)
+                    flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
+               else
+                    qtmp = q(i,j)
+                    flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
+               endif
+#ifdef ADJOINT
+            end if
+#endif
          enddo
       enddo
 

@@ -62,7 +62,11 @@
 ! </table>
 
 module fv_tracer2d_mod
+#ifndef ADJOINT
    use tp_core_mod,       only: fv_tp_2d, copy_corners
+#else
+   use tp_core_mod,       only: fv_tp_2d, copy_corners, tp_core_is_adjoint
+#endif
    use fv_mp_mod,         only: mp_reduce_max
    use fv_mp_mod,         only: ng, mp_gather, is_master
    use fv_mp_mod,         only: group_halo_update_type
@@ -955,6 +959,9 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
     q3(is:ie,js:je,:,:) = q(is:ie,js:je,:,:)
     call start_group_halo_update(i_pack, q3, domain)
 
+#ifdef ADJOINT
+    tp_core_is_adjoint = (dt < 0.0)
+#endif
     if ( flagstruct%z_tracer ) then
          call tracer_2d_1L(q3, dpL, mfxL, mfyL, cxL, cyL, &
                          gridstruct, bd, domain, npx, npy, npz, nq,    &
@@ -965,6 +972,9 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
                         flagstruct%hord_tr, flagstruct%q_split, dt, 0, i_pack, &
                         flagstruct%nord_tr, flagstruct%trdm2, flagstruct%lim_fac, dpA=dpA)
     endif
+#ifdef ADJOINT
+    tp_core_is_adjoint = .false.
+#endif
 
 #ifdef ADJOINT
     ! Adjoint halo exchange: return ghost-cell sensitivities accumulated during the
