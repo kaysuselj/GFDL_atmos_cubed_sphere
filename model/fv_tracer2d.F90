@@ -857,9 +857,6 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
 
       use fv_mapz_mod,        only: mapn_tracer, map1_q2
       use fv_fill_mod,        only: fillz
-#ifdef ADJOINT
-      use mpp_domains_mod,    only: mpp_update_domains_ad
-#endif
 
       integer, intent(IN) :: npx
       integer, intent(IN) :: npy
@@ -976,18 +973,6 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
     tp_core_is_adjoint = .false.
 #endif
 
-#ifdef ADJOINT
-    ! Adjoint halo exchange: return ghost-cell sensitivities accumulated during the
-    ! reversed-wind PPM step back to the real cells on neighbouring cube faces.
-    ! The forward mpp_update_domains (copy) has as its adjoint an accumulate-and-zero;
-    ! mpp_update_domains_ad adds ghost-cell values to the owner's real cells then zeros
-    ! the halos.  Only needed when running in adjoint mode (dt < 0).
-    if (dt < 0.0) then
-        do n = 1, nq
-            call mpp_update_domains_ad(q3(:,:,:,n), domain, complete=.true.)
-        end do
-    end if
-#endif
 
     ! GCHP: Build post-advection pressure edges if requested
     if (present(pleadv)) then
