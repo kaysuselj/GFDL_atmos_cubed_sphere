@@ -58,6 +58,9 @@ module tp_core_mod
  private
  public fv_tp_2d, pert_ppm, copy_corners
 #ifdef ADJOINT
+ public copy_corners_ad
+#endif
+#ifdef ADJOINT
 ! Flag set by offline_tracer_advection so that xppm/yppm use ghost-cell boundary stencils
 ! in adjoint (reversed-wind) mode.  Only active when dt<0; zeroed after each PPM call.
  logical, save :: tp_core_is_adjoint = .false.
@@ -165,8 +168,17 @@ contains
    endif
    ord_ou = hord
 
+#ifdef ADJOINT
+   if (tp_core_is_adjoint) then
+     if (.not. gridstruct%nested) call copy_corners_ad(q, npx, npy, 2, gridstruct%nested, bd, &
+                                   gridstruct%sw_corner, gridstruct%se_corner, gridstruct%nw_corner, gridstruct%ne_corner)
+   else
+#endif
    if (.not. gridstruct%nested) call copy_corners(q, npx, npy, 2, gridstruct%nested, bd, &
                                 gridstruct%sw_corner, gridstruct%se_corner, gridstruct%nw_corner, gridstruct%ne_corner)
+#ifdef ADJOINT
+   end if
+#endif
 
    call yppm(fy2, q, cry, ord_in, isd,ied,isd,ied, js,je,jsd,jed, npx,npy, gridstruct%dya, gridstruct%nested, gridstruct%grid_type, lim_fac)
 
@@ -183,8 +195,17 @@ contains
 
    call xppm(fx, q_i, crx(is,js), ord_ou, is,ie,isd,ied, js,je,jsd,jed, npx,npy, gridstruct%dxa, gridstruct%nested, gridstruct%grid_type, lim_fac)
 
+#ifdef ADJOINT
+  if (tp_core_is_adjoint) then
+    if (.not. gridstruct%nested) call copy_corners_ad(q, npx, npy, 1, gridstruct%nested, bd, &
+                                 gridstruct%sw_corner, gridstruct%se_corner, gridstruct%nw_corner, gridstruct%ne_corner)
+  else
+#endif
   if (.not. gridstruct%nested) call copy_corners(q, npx, npy, 1, gridstruct%nested, bd, &
                                gridstruct%sw_corner, gridstruct%se_corner, gridstruct%nw_corner, gridstruct%ne_corner)
+#ifdef ADJOINT
+  end if
+#endif
 
   call xppm(fx2, q, crx, ord_in, is,ie,isd,ied, jsd,jed,jsd,jed, npx,npy, gridstruct%dxa, gridstruct%nested, gridstruct%grid_type, lim_fac)
 
@@ -326,6 +347,94 @@ contains
       
  end subroutine copy_corners
 
+#ifdef ADJOINT
+ subroutine copy_corners_ad(q, npx, npy, dir, nested, bd, &
+                            sw_corner, se_corner, nw_corner, ne_corner)
+! Adjoint of copy_corners: accumulate ghost corner sensitivities back to
+! the source real cells and zero the ghost corners.
+! In the reversed-wind adjoint framework this replaces the forward copy
+! so that cross-corner sensitivity is correctly attributed to interior cells.
+ type(fv_grid_bounds_type), intent(IN) :: bd
+ integer, intent(in):: npx, npy, dir
+ real, intent(inout):: q(bd%isd:bd%ied,bd%jsd:bd%jed)
+ logical, intent(IN) :: nested, sw_corner, se_corner, nw_corner, ne_corner
+ integer  i,j
+
+ if (nested) return
+
+ if ( dir == 1 ) then
+    if ( sw_corner ) then
+         do j=1-ng,0
+            do i=1-ng,0
+               q(j,1-i) = q(j,1-i) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+    if ( se_corner ) then
+         do j=1-ng,0
+            do i=npx,npx+ng-1
+               q(npy-j,i-npx+1) = q(npy-j,i-npx+1) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+    if ( ne_corner ) then
+         do j=npy,npy+ng-1
+            do i=npx,npx+ng-1
+               q(j,2*npx-1-i) = q(j,2*npx-1-i) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+    if ( nw_corner ) then
+         do j=npy,npy+ng-1
+            do i=1-ng,0
+               q(npy-j,i-1+npx) = q(npy-j,i-1+npx) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+
+ elseif ( dir == 2 ) then
+    if ( sw_corner ) then
+         do j=1-ng,0
+            do i=1-ng,0
+               q(1-j,i) = q(1-j,i) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+    if ( se_corner ) then
+         do j=1-ng,0
+            do i=npx,npx+ng-1
+               q(npy+j-1,npx-i) = q(npy+j-1,npx-i) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+    if ( ne_corner ) then
+         do j=npy,npy+ng-1
+            do i=npx,npx+ng-1
+               q(2*npy-1-j,i) = q(2*npy-1-j,i) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+    if ( nw_corner ) then
+         do j=npy,npy+ng-1
+            do i=1-ng,0
+               q(j+1-npx,npy-i) = q(j+1-npx,npy-i) + q(i,j)
+               q(i,j) = 0.
+            enddo
+         enddo
+    endif
+
+ endif
+
+ end subroutine copy_corners_ad
+#endif
+
  subroutine xppm(flux, q, c, iord, is,ie,isd,ied, jfirst,jlast,jsd,jed, npx, npy, dxa, nested, grid_type, lim_fac)
  integer, INTENT(IN) :: is, ie, isd, ied, jsd, jed
  integer, INTENT(IN) :: jfirst, jlast  !< compute domain
@@ -380,12 +489,22 @@ contains
        al(0) = c1*q1(-2) + c2*q1(-1) + c3*q1(0)
        al(1) = 0.5*(((2.*dxa(0,j)+dxa(-1,j))*q1(0)-dxa(0,j)*q1(-1))/(dxa(-1,j)+dxa(0,j)) &
              +      ((2.*dxa(1,j)+dxa( 2,j))*q1(1)-dxa(1,j)*q1( 2))/(dxa(1, j)+dxa(2,j)))
+#ifdef ADJOINT
+       ! Outward adjoint flow (c<0): upwind is interior — use interior-only reconstruction.
+       if (tp_core_is_adjoint .and. c(is,j) < 0.) &
+         al(1) = ((2.*dxa(1,j)+dxa(2,j))*q1(1)-dxa(1,j)*q1(2))/(dxa(1,j)+dxa(2,j))
+#endif
        al(2) = c3*q1(1) + c2*q1(2) +c1*q1(3)
      endif
      if ( (ie+1)==npx ) then
        al(npx-1) = c1*q1(npx-3) + c2*q1(npx-2) + c3*q1(npx-1)
        al(npx) = 0.5*(((2.*dxa(npx-1,j)+dxa(npx-2,j))*q1(npx-1)-dxa(npx-1,j)*q1(npx-2))/(dxa(npx-2,j)+dxa(npx-1,j)) &
                +      ((2.*dxa(npx,  j)+dxa(npx+1,j))*q1(npx  )-dxa(npx,  j)*q1(npx+1))/(dxa(npx,  j)+dxa(npx+1,j)))
+#ifdef ADJOINT
+       ! Outward adjoint flow (c>0 at right face): upwind is interior — use interior-only reconstruction.
+       if (tp_core_is_adjoint .and. c(ie+1,j) > 0.) &
+         al(npx) = ((2.*dxa(npx-1,j)+dxa(npx-2,j))*q1(npx-1)-dxa(npx-1,j)*q1(npx-2))/(dxa(npx-2,j)+dxa(npx-1,j))
+#endif
        al(npx+1) = c3*q1(npx) + c2*q1(npx+1) + c1*q1(npx+2)
      endif
    endif
@@ -420,30 +539,6 @@ contains
 !DEC$ VECTOR ALWAYS
       do i=is,ie+1
          xt = c(i,j)
-#ifdef ADJOINT
-         ! In adjoint (reversed-wind) mode, the standard formula misuses interior al() at
-         ! face boundaries where the forward PPM used ghost-cell al() values.  Replace the
-         ! stencil at the two boundary faces so that ghost cells are used symmetrically.
-         if (tp_core_is_adjoint .and. .not.nested .and. grid_type<3) then
-            if (i==is .and. is==1 .and. xt < 0.) then
-               ! Left face, adjoint c<0 (= forward c>0): use ghost-cell al(i-1)=al(0) and
-               ! qtmp=q1(i-1)=q1(0) to mirror the forward PPM's c>0 stencil at this face.
-               qtmp = q1(i-1)
-               flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i-1)+al(i)-(qtmp+qtmp)))
-            else if (i==ie+1 .and. (ie+1)==npx .and. xt > 0.) then
-               ! Right face, adjoint c>0 (= forward c<0): use ghost-cell al(i+1)=al(npx+1)
-               ! to mirror the forward PPM's c<0 stencil that depended on ghost cells.
-               qtmp = q1(i-1)
-               flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i)+al(i+1)-(qtmp+qtmp)))
-            else if ( xt > 0. ) then
-               qtmp = q1(i-1)
-               flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp)))
-            else
-               qtmp = q1(i)
-               flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i)+al(i+1)-(qtmp+qtmp)))
-            endif
-         else
-#endif
             if ( xt > 0. ) then
                  qtmp = q1(i-1)
                  flux(i,j) = qtmp + (1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp)))
@@ -451,9 +546,6 @@ contains
                  qtmp = q1(i)
                  flux(i,j) = qtmp + (1.+xt)*(al(i)-qtmp+xt*(al(i)+al(i+1)-(qtmp+qtmp)))
             endif
-#ifdef ADJOINT
-         end if
-#endif
 !        x0 = sign(dim(xt, 0.), 1.)
 !        x1 = sign(dim(0., xt), 1.)
 !        flux(i,j) = x0*(q1(i-1)+(1.-xt)*(al(i)-qtmp-xt*(al(i-1)+al(i)-(qtmp+qtmp))))     &
@@ -627,6 +719,16 @@ contains
 
          br(2) = al(3) - q1(2)
          call pert_ppm(3, q1(0), bl(0), br(0), 1)
+#ifdef ADJOINT
+         ! Outward adjoint flow (c<0 at left face): bl(1) used centered ghost+interior
+         ! reconstruction — replace with interior-only upwind reconstruction.
+         if (tp_core_is_adjoint .and. c(is,j) < 0.) then
+           xt = ((2.*dxa(1,j)+dxa(2,j))*q1(1)-dxa(1,j)*q1(2))/(dxa(1,j)+dxa(2,j))
+           xt = max(xt, min(q1(1),q1(2),q1(3)))
+           xt = min(xt, max(q1(1),q1(2),q1(3)))
+           bl(1) = xt - q1(1)
+         endif
+#endif
       endif
       if ( (ie+1)==npx ) then
          bl(npx-2) = al(npx-2) - q1(npx-2)
@@ -646,6 +748,16 @@ contains
 
          br(npx) = s11*(q1(npx+1)-q1(npx)) - s14*dm(npx+1)
          call pert_ppm(3, q1(npx-2), bl(npx-2), br(npx-2), 1)
+#ifdef ADJOINT
+         ! Outward adjoint flow (c>0 at right face): br(npx-1) used centered ghost+interior
+         ! reconstruction — replace with interior-only upwind reconstruction.
+         if (tp_core_is_adjoint .and. c(ie+1,j) > 0.) then
+           xt = ((2.*dxa(npx-1,j)+dxa(npx-2,j))*q1(npx-1)-dxa(npx-1,j)*q1(npx-2))/(dxa(npx-2,j)+dxa(npx-1,j))
+           xt = max(xt, min(q1(npx-3),q1(npx-2),q1(npx-1)))
+           xt = min(xt, max(q1(npx-3),q1(npx-2),q1(npx-1)))
+           br(npx-1) = xt - q1(npx-1)
+         endif
+#endif
       endif
     endif
 
@@ -713,6 +825,11 @@ if ( jord < 8 ) then
            al(i,0) = c1*q(i,-2) + c2*q(i,-1) + c3*q(i,0)
            al(i,1) = 0.5*(((2.*dya(i,0)+dya(i,-1))*q(i,0)-dya(i,0)*q(i,-1))/(dya(i,-1)+dya(i,0))   &
                    +      ((2.*dya(i,1)+dya(i,2))*q(i,1)-dya(i,1)*q(i,2))/(dya(i,1)+dya(i,2)))
+#ifdef ADJOINT
+           ! Outward adjoint flow (c<0): upwind is interior — use interior-only reconstruction.
+           if (tp_core_is_adjoint .and. c(i,js) < 0.) &
+             al(i,1) = ((2.*dya(i,1)+dya(i,2))*q(i,1)-dya(i,1)*q(i,2))/(dya(i,1)+dya(i,2))
+#endif
            al(i,2) = c3*q(i,1) + c2*q(i,2) + c1*q(i,3)
         enddo
       endif
@@ -721,6 +838,11 @@ if ( jord < 8 ) then
          al(i,npy-1) = c1*q(i,npy-3) + c2*q(i,npy-2) + c3*q(i,npy-1)
          al(i,npy) = 0.5*(((2.*dya(i,npy-1)+dya(i,npy-2))*q(i,npy-1)-dya(i,npy-1)*q(i,npy-2))/(dya(i,npy-2)+dya(i,npy-1))  &
                    +      ((2.*dya(i,npy)+dya(i,npy+1))*q(i,npy)-dya(i,npy)*q(i,npy+1))/(dya(i,npy)+dya(i,npy+1)))
+#ifdef ADJOINT
+         ! Outward adjoint flow (c>0 at top face): upwind is interior — use interior-only reconstruction.
+         if (tp_core_is_adjoint .and. c(i,je+1) > 0.) &
+           al(i,npy) = ((2.*dya(i,npy-1)+dya(i,npy-2))*q(i,npy-1)-dya(i,npy-1)*q(i,npy-2))/(dya(i,npy-2)+dya(i,npy-1))
+#endif
          al(i,npy+1) = c3*q(i,npy) + c2*q(i,npy+1) + c1*q(i,npy+2)
         enddo
       endif
@@ -764,26 +886,6 @@ if ( jord < 8 ) then
 !DEC$ VECTOR ALWAYS
          do i=ifirst,ilast
             xt = c(i,j)
-#ifdef ADJOINT
-            ! In adjoint mode, use ghost-cell stencils at face boundaries (same fix as xppm).
-            if (tp_core_is_adjoint .and. .not.nested .and. grid_type<3) then
-               if (j==js .and. js==1 .and. xt < 0.) then
-                  ! Bottom face, adjoint c<0 (= forward c>0): use ghost al(i,j-1)=al(i,0).
-                  qtmp = q(i,j-1)
-                  flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
-               else if (j==je+1 .and. (je+1)==npy .and. xt > 0.) then
-                  ! Top face, adjoint c>0 (= forward c<0): use ghost al(i,j+1)=al(i,npy+1).
-                  qtmp = q(i,j-1)
-                  flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
-               else if (xt > 0.) then
-                  qtmp = q(i,j-1)
-                  flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
-               else
-                  qtmp = q(i,j)
-                  flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
-               endif
-            else
-#endif
                if ( xt > 0. ) then
                     qtmp = q(i,j-1)
                     flux(i,j) = qtmp + (1.-xt)*(al(i,j)-qtmp-xt*(al(i,j-1)+al(i,j)-(qtmp+qtmp)))
@@ -791,9 +893,6 @@ if ( jord < 8 ) then
                     qtmp = q(i,j)
                     flux(i,j) = qtmp + (1.+xt)*(al(i,j)-qtmp+xt*(al(i,j)+al(i,j+1)-(qtmp+qtmp)))
                endif
-#ifdef ADJOINT
-            end if
-#endif
          enddo
       enddo
 
@@ -993,6 +1092,20 @@ else
          br(i,2) = al(i,3) - q(i,2)
       enddo
       call pert_ppm(3*(ilast-ifirst+1), q(ifirst,0), bl(ifirst,0), br(ifirst,0), 1)
+#ifdef ADJOINT
+      ! Outward adjoint flow (c<0 at bottom face): bl(i,1) used centered ghost+interior
+      ! reconstruction — replace with interior-only upwind reconstruction.
+      if (tp_core_is_adjoint) then
+        do i=ifirst,ilast
+          if (c(i,js) < 0.) then
+            xt = ((2.*dya(i,1)+dya(i,2))*q(i,1)-dya(i,1)*q(i,2))/(dya(i,1)+dya(i,2))
+            xt = max(xt, min(q(i,1),q(i,2),q(i,3)))
+            xt = min(xt, max(q(i,1),q(i,2),q(i,3)))
+            bl(i,1) = xt - q(i,1)
+          endif
+        enddo
+      endif
+#endif
     endif
     if( (je+1)==npy ) then
       do i=ifirst,ilast
@@ -1014,6 +1127,20 @@ else
          br(i,npy) = s11*(q(i,npy+1)-q(i,npy)) - s14*dm(i,npy+1)
      enddo
      call pert_ppm(3*(ilast-ifirst+1), q(ifirst,npy-2), bl(ifirst,npy-2), br(ifirst,npy-2), 1)
+#ifdef ADJOINT
+      ! Outward adjoint flow (c>0 at top face): br(i,npy-1) used centered ghost+interior
+      ! reconstruction — replace with interior-only upwind reconstruction.
+      if (tp_core_is_adjoint) then
+        do i=ifirst,ilast
+          if (c(i,je+1) > 0.) then
+            xt = ((2.*dya(i,npy-1)+dya(i,npy-2))*q(i,npy-1)-dya(i,npy-1)*q(i,npy-2))/(dya(i,npy-2)+dya(i,npy-1))
+            xt = max(xt, min(q(i,npy-3),q(i,npy-2),q(i,npy-1)))
+            xt = min(xt, max(q(i,npy-3),q(i,npy-2),q(i,npy-1)))
+            br(i,npy-1) = xt - q(i,npy-1)
+          endif
+        enddo
+      endif
+#endif
     endif
  end if
 
