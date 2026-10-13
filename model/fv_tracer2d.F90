@@ -86,6 +86,15 @@ logical, parameter :: rescale_trop_only=.True.
 logical, parameter :: show_scaling=.False.
 
 public :: tracer_2d, tracer_2d_nested, tracer_2d_1L, offline_tracer_advection
+#ifdef ADJOINT
+! Advection adjoint method selector, set from GCHP.rc (ADV_ADJ_METHOD:) via AdvCore.
+!   reverse_wind_pure : negated winds through the pure forward operator; NO adjoint
+!                       corrections (DEFAULT; any hord/kord)
+!   reverse_wind      : reverse_wind_pure PLUS adjoint corrections (copy_corners_ad +
+!                       adjoint boundary stencils); any hord/kord
+character(len=32), save :: adv_adj_method = 'reverse_wind_pure'
+public :: adv_adj_method, set_adv_adj_method
+#endif
 
 real, allocatable, dimension(:,:,:) :: nest_fx_west_accum, nest_fx_east_accum, nest_fx_south_accum, nest_fx_north_accum
 
@@ -581,6 +590,17 @@ subroutine tracer_2d(q, dp1, mfx, mfy, cx, cy, gridstruct, bd, domain, npx, npy,
 
 end subroutine tracer_2d
 
+#ifdef ADJOINT
+!-----------------------------------------------------------------------
+! Setter for the advection-adjoint method selector. Called by AdvCore
+! after reading ADV_ADJ_METHOD: from GCHP.rc.
+!-----------------------------------------------------------------------
+ subroutine set_adv_adj_method(method)
+   character(len=*), intent(in) :: method
+   adv_adj_method = trim(adjustl(method))
+ end subroutine set_adv_adj_method
+#endif
+
 
 subroutine tracer_2d_nested(q, dp1, mfx, mfy, cx, cy, gridstruct, bd, domain, npx, npy, npz,   &
                      nq,  hord, q_split, dt, id_divg, q_pack, nord_tr, trdm, &
@@ -850,7 +870,7 @@ subroutine tracer_2d_nested(q, dp1, mfx, mfy, cx, cy, gridstruct, bd, domain, np
 subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
                                     gridstruct, flagstruct, bd, domain, &
                                     ak, bk, ptop, npx, npy, npz,   &
-                                    nq, dt, pleadv)
+                                    nq, dt, pleadv, isAdjoint)
                                     ! GCHP: pass extra optional argument pleadv
                                     !nq, dt)
 
@@ -880,6 +900,10 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
       real, intent(IN   ) :: ptop
       ! GCHP: add optional argument pleadv
       real, optional, intent(OUT  ) ::pleadv(bd%is:bd%ie,bd%js:bd%je,npz+1)    ! DELP after adv_core
+      ! Explicit adjoint-mode flag (from MODEL_PHASE in GCHP.rc, via AdvCore).
+      ! Preferred over inferring adjoint mode from dt<0. Optional for backward
+      ! compatibility; when absent we fall back to (dt < 0.0).
+      logical, optional, intent(IN ) :: isAdjoint
 ! Local Arrays
       real ::   xL(bd%isd:bd%ied+1,bd%jsd:bd%jed  ,npz)  ! X-Dir for MPP Updates
       real ::   yL(bd%isd:bd%ied  ,bd%jsd:bd%jed+1,npz)  ! Y-Dir for MPP Updates
@@ -910,6 +934,9 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
 
       ! GCHP: define kStart
       integer :: kStart
+
+      ! Resolved adjoint-mode flag (explicit isAdjoint if present, else dt<0)
+      logical :: l_isAdjoint
 
       type(group_halo_update_type), save :: i_pack
 
@@ -952,13 +979,44 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
     mfyL(is:ie,js:je+1,:) = yL(is:ie,js:je+1,:)
 
 ! Fill local tracers and pressure thickness
+    ! Zero the full dpL (incl. halo), as for q3 below: the halo ring is not filled and
+    ! is read by fv_tp_2d's divergence-damping term (mass=dp1) when trdm2>0.
+    dpL = 0.0
     dpL(bd%is:bd%ie,bd%js:bd%je,:) = ple0(:,:,2:npz+1) - ple0(:,:,1:npz)
+    ! Zero the full q3 (incl. halo) before filling the compute domain: the halo
+    ! exchange does not fill every ghost cell (far cubed-sphere corner ghosts),
+    ! and the reversed-wind boundary reconstruction reads them (al(0)=q1(-2)).
+    ! Without this they are uninitialized -> garbage adjoint in the full model.
+    q3 = 0.0
     q3(is:ie,js:je,:,:) = q(is:ie,js:je,:,:)
     call start_group_halo_update(i_pack, q3, domain)
 
 #ifdef ADJOINT
-    tp_core_is_adjoint = (dt < 0.0)
+    ! Resolve adjoint-mode flag: prefer the explicit isAdjoint (from MODEL_PHASE in
+    ! GCHP.rc) over inferring from dt<0. Fall back to dt<0 if not supplied.
+    if (present(isAdjoint)) then
+       l_isAdjoint = isAdjoint
+    else
+       l_isAdjoint = (dt < 0.0)
+    endif
+    ! Validate ADV_ADJ_METHOD and guard unimplemented paths.
+    if (l_isAdjoint) then
+       select case (trim(adv_adj_method))
+       case ('reverse_wind_pure', 'reverse_wind')
+          ! ok
+       case default
+          call mpp_error(FATAL, 'offline_tracer_advection: unknown ADV_ADJ_METHOD='// &
+               trim(adv_adj_method)//' (use reverse_wind_pure or reverse_wind).')
+       end select
+    endif
+    ! Adjoint corrections (copy_corners_ad + adjoint boundary stencils) are applied ONLY
+    ! for 'reverse_wind'. 'reverse_wind_pure' runs the negated winds through the pure
+    ! forward operator (no corrections).
+    tp_core_is_adjoint = l_isAdjoint .and. (trim(adv_adj_method) == 'reverse_wind')
+#else
+    l_isAdjoint = .false.
 #endif
+
     if ( flagstruct%z_tracer ) then
          call tracer_2d_1L(q3, dpL, mfxL, mfyL, cxL, cyL, &
                          gridstruct, bd, domain, npx, npy, npz, nq,    &
