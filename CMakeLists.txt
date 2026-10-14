@@ -80,25 +80,6 @@ endif()
 
 target_compile_definitions (${this} PRIVATE MAPL_MODE SPMD TIMING)
 
-# Propagate adjoint-related preprocessor flags into the FV dynamical core so the
-# #ifdef ADJOINT code in tp_core.F90 / fv_tracer2d.F90 (reversed-wind boundary
-# stencils, copy_corners_ad, and the adv_adj_method
-# switch) is actually compiled. The parent FVdycoreCubed_GridComp target already
-# sets these, but the fvdycore subtarget did not inherit them.
-target_compile_definitions (${this} PRIVATE
-  $<$<BOOL:${ADJOINT}>:ADJOINT>
-  $<$<BOOL:${REVERSE_OPERATORS}>:REVERSE_OPERATORS>
-)
-
-# One-off debugging: trap uninitialized reads / out-of-bounds / FP exceptions in
-# the adjoint dycore code (reversed-wind boundary stencils) to pinpoint the
-# garbage-in-non-target-species bug. Enable with: cmake ... -DADJ_TRAP=ON
-option(ADJ_TRAP "Trap uninitialized/OOB/NaN in tp_core + fv_tracer2d for adjoint debugging" OFF)
-if (ADJ_TRAP)
-  set_source_files_properties(model/tp_core.F90 model/fv_tracer2d.F90 PROPERTIES
-    COMPILE_OPTIONS "-g;-O0;-traceback;-fpe0;-check;bounds;-check;uninit;-init=snan,arrays;-warn;uninitialized")
-endif()
-
 # Enable OpenMP
 target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran)
 
