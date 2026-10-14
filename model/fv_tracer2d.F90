@@ -948,7 +948,14 @@ subroutine offline_tracer_advection(q, ple0, ple1, mfx, mfy, cx, cy, &
     mfyL(is:ie,js:je+1,:) = yL(is:ie,js:je+1,:)
 
 ! Fill local tracers and pressure thickness
+    ! Zero the full dpL (incl. halo): the halo ring is not filled and is read by
+    ! fv_tp_2d's divergence-damping term (mass=dp1) when trdm2>0.
+    dpL = 0.0
     dpL(bd%is:bd%ie,bd%js:bd%je,:) = ple0(:,:,2:npz+1) - ple0(:,:,1:npz)
+    ! Zero the full q3 (incl. halo) before filling the compute domain: the halo
+    ! exchange does not fill every ghost cell (far cubed-sphere corner ghosts),
+    ! and the PPM edge reconstruction reads them (al(0) uses q1(-2)).
+    q3 = 0.0
     q3(is:ie,js:je,:,:) = q(is:ie,js:je,:,:)
     call start_group_halo_update(i_pack, q3, domain)
 
