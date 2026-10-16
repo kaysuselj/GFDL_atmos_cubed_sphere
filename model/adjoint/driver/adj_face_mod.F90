@@ -48,6 +48,13 @@ module adj_face_mod
   real, allocatable, save :: q_in(:,:,:), q_out_gchp(:,:,:)
   real, save :: ak(npz+1), bk(npz+1), ptop
 
+  !> diagnostics written by the top-level routines (adj_tops.F90)
+  real, save :: pleadv_out(is:ie, js:je, npz+1), dpa_out(is:ie, js:je, npz)
+
+  !> mass fixer in top_step: frozen factor adj_s0 (adj_freeze_s) or s(q); s(q) is saved in adj_s0
+  logical, save :: adj_freeze_s = .false.
+  real, save :: adj_s0 = 1.
+
   !> level used by the single-level kernel test (fv_tp_2d)
   integer, save :: k_test = 40
 
@@ -117,5 +124,17 @@ contains
     call read_r8(dir, 'bk', bk, npz+1)
     ptop = ak(1)
   end subroutine load_face
+
+  !> write q after one top_step, for comparing the original and the TAF-generated forward
+  subroutine dump_step(dir, tag, q)
+    character(len=*), intent(in) :: dir, tag
+    real, intent(in) :: q(is:ie, js:je, npz, nq)
+    character(len=16) :: s
+    integer :: u
+    write(s, '(a,i0,a,i0)') '_h', flagstruct%hord_tr, '_k', flagstruct%kord_tr
+    open(newunit=u, file=dir//'/step_'//tag//trim(s)//'.r8', access='stream', form='unformatted', status='replace')
+    write(u) q
+    close(u)
+  end subroutine dump_step
 
 end module adj_face_mod

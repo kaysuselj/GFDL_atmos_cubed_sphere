@@ -1,0 +1,740 @@
+ Transformation of Algorithms in Fortran (TAF) Version 6.8.11
+ Copyright 2000-2025 FastOpt GmbH, Hamburg, Germany
+ All rights reserved.
+ URL: http://www.FastOpt.de, Email: info@FastOpt.de
+
+taf -forward -reverse -toplevel top_adv -input qh,qc -output qh,qc,fx,fy -r8 -f08 -free -N 512 stubs.f90 tp_core.f90 fv_fill.f90 fv_mapz.f90 fv_tracer2d.f90 adj_face_mod.f90 adj_tops.f90 -outdir . 
+
+stubs.f90:
+ parsing module     ** platform_mod **
+ parsing module     ** constants_mod **
+ parsing module     ** field_manager_mod **
+ parsing module     ** tracer_manager_mod **
+         function   ** get_tracer_index **
+ parsing module     ** fv_timing_mod **
+         subroutine ** timing_on **
+         subroutine ** timing_off **
+ parsing module     ** mpp_mod **
+         subroutine ** mpp_error **
+         subroutine ** mpp_sum **
+         subroutine ** mpp_max **
+         subroutine ** mpp_broadcast **
+         subroutine ** mpp_send **
+         subroutine ** mpp_recv **
+         function   ** get_unit **
+         function   ** mpp_pe **
+         function   ** mpp_root_pe **
+ parsing module     ** mpp_domains_mod **
+ parsing interface  ** mpp_update_domains **
+           contains ** update_2d **
+           contains ** update_3d **
+           contains ** update_vec_3d **
+         subroutine ** adj_set_cgrid_halo **
+         function   ** which_field **
+         subroutine ** mpp_get_boundary **
+         subroutine ** update_vec_3d **
+         subroutine ** update_3d **
+         subroutine ** update_2d **
+ parsing module     ** fv_mp_mod **
+ parsing interface  ** start_group_halo_update **
+           contains ** start_halo_3d **
+           contains ** start_halo_4d **
+         function   ** is_master **
+         subroutine ** mp_reduce_max **
+         subroutine ** mp_gather **
+         subroutine ** start_halo_3d **
+         subroutine ** start_halo_4d **
+         subroutine ** complete_group_halo_update **
+ parsing module     ** fv_arrays_mod **
+ parsing module     ** boundary_mod **
+         subroutine ** nested_grid_bc_apply_intt **
+ parsing module     ** fv_grid_utils_mod **
+         function   ** g_sum **
+ parsing module     ** fv_cmp_mod **
+         subroutine ** qs_init **
+         subroutine ** fv_sat_adj **
+
+tp_core.f90:
+ parsing module     ** tp_core_mod **
+         subroutine ** fv_tp_2d **
+         subroutine ** copy_corners **
+         subroutine ** xppm **
+         subroutine ** yppm **
+         subroutine ** mp_ghost_ew **
+         subroutine ** pert_ppm **
+         subroutine ** deln_flux **
+
+fv_fill.f90:
+ parsing module     ** fv_fill_mod **
+         subroutine ** fillz **
+         subroutine ** fill_gfs **
+         subroutine ** fill2d **
+
+fv_mapz.f90:
+ parsing module     ** fv_mapz_mod **
+         subroutine ** lagrangian_to_eulerian **
+         subroutine ** compute_total_energy **
+         subroutine ** pkez **
+         subroutine ** remap_z **
+         subroutine ** map_scalar **
+         subroutine ** map1_ppm **
+         subroutine ** mapn_tracer **
+         subroutine ** map1_q2 **
+         subroutine ** remap_2d **
+         subroutine ** scalar_profile **
+         subroutine ** cs_profile **
+         subroutine ** cs_limiters **
+         subroutine ** ppm_profile **
+         subroutine ** ppm_limiters **
+         subroutine ** steepz **
+         subroutine ** rst_remap **
+         subroutine ** mappm **
+         subroutine ** moist_cv **
+         subroutine ** moist_cp **
+         subroutine ** map1_cubic **
+
+fv_tracer2d.f90:
+ parsing module     ** fv_tracer2d_mod **
+         subroutine ** tracer_2d_1l **
+         subroutine ** tracer_2d **
+         subroutine ** tracer_2d_nested **
+         subroutine ** offline_tracer_advection **
+         function   ** calcscalingfactortrop **
+         function   ** calcscalingfactor **
+
+adj_face_mod.f90:
+ parsing module     ** adj_face_mod **
+         subroutine ** read_r8 **
+         subroutine ** load_face **
+         subroutine ** dump_step **
+
+adj_tops.f90:
+ parsing subroutine ** top_tp2d **
+ parsing subroutine ** top_tracer2d **
+ parsing subroutine ** top_offline **
+ parsing subroutine ** top_step **
+ parsing subroutine ** top_adv **
+
+=========================================
+ normalization
+=========================================
+
+=========================================
+ control flow analysis
+=========================================
+*WARNING* : control flow graph of subroutine map1_ppm is irreducible
+*WARNING* : control flow graph of subroutine map_scalar is irreducible
+*WARNING* : control flow graph of subroutine mapn_tracer is irreducible
+*WARNING* : control flow graph of subroutine mappm is irreducible
+*WARNING* : control flow graph of subroutine remap_2d is irreducible
+*WARNING* : control flow graph of subroutine remap_z is irreducible
+
+=========================================
+ procedure pointer target analysis
+=========================================
+
+=========================================
+ data dependence analysis
+=========================================
+
+=========================================
+ global data flow analysis
+=========================================
+ determine required routines and statements for subroutine : top_adv
+ dependent variable(s) = fx,fy,qc,qh
+
+ determine influenced routines and statements for subroutine : top_adv
+ independent variable(s) = qc,qh
+
+ the independent variable(s) are : qc,qh
+
+ the   dependent variable(s) are : fx,fy,qc,qh
+
+TAF WARNING toplevel routine overwrites the  input variables : adj_s0,adj_sum_saved[C],qc[C],qh[C]
+
+=========================================
+ generate modules of forward mode
+=========================================
+ begin generate tangent linear module of : fv_mp_mod
+ end   generate tangent linear module of : fv_mp_mod
+ begin generate tangent linear module of : adj_face_mod
+       reset module variables            : adj_face_mod_constructor_tl
+ end   generate tangent linear module of : adj_face_mod
+ begin generate tangent linear module of : mpp_mod
+       reset module variables            : mpp_mod_constructor_tl
+ end   generate tangent linear module of : mpp_mod
+ begin generate tangent linear module of : fv_mapz_mod
+ end   generate tangent linear module of : fv_mapz_mod
+ begin generate tangent linear module of : tp_core_mod
+ end   generate tangent linear module of : tp_core_mod
+ begin generate tangent linear module of : fv_tracer2d_mod
+ end   generate tangent linear module of : fv_tracer2d_mod
+
+=========================================
+ generate routines of forward mode
+=========================================
+ begin generate tangent linear computations of : top_adv
+ begin generate tangent linear computations of : top_tp2d
+ begin generate tangent linear computations of : fv_tp_2d
+ begin generate tangent linear computations of : deln_flux
+ begin generate tangent linear computations of : copy_corners
+ end   generate tangent linear computations of : copy_corners
+ end   generate tangent linear computations of : deln_flux
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ begin generate tangent linear computations of : yppm
+ begin generate tangent linear computations of : pert_ppm
+ end   generate tangent linear computations of : pert_ppm
+ end   generate tangent linear computations of : yppm
+ begin generate tangent linear computations of : xppm
+ end   generate tangent linear computations of : xppm
+ begin generate tangent linear computations of : copy_corners
+ end   generate tangent linear computations of : copy_corners
+ begin generate tangent linear computations of : xppm
+ end   generate tangent linear computations of : xppm
+ end   generate tangent linear computations of : fv_tp_2d
+ end   generate tangent linear computations of : top_tp2d
+ begin generate tangent linear computations of : top_step
+ begin generate tangent linear computations of : mpp_sum
+ end   generate tangent linear computations of : mpp_sum
+ begin generate tangent linear computations of : map1_q2
+ begin generate tangent linear computations of : ppm_profile
+ begin generate tangent linear computations of : ppm_limiters
+ end   generate tangent linear computations of : ppm_limiters
+ end   generate tangent linear computations of : ppm_profile
+ begin generate tangent linear computations of : scalar_profile
+ begin generate tangent linear computations of : cs_limiters
+ end   generate tangent linear computations of : cs_limiters
+ end   generate tangent linear computations of : scalar_profile
+ end   generate tangent linear computations of : map1_q2
+ begin generate tangent linear computations of : tracer_2d
+ begin generate tangent linear computations of : start_halo_4d
+ end   generate tangent linear computations of : start_halo_4d
+ begin generate tangent linear computations of : fv_tp_2d
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : fv_tp_2d
+ end   generate tangent linear computations of : tracer_2d
+ end   generate tangent linear computations of : top_step
+ begin generate tangent linear computations of : top_tracer2d
+ begin generate tangent linear computations of : tracer_2d
+ begin generate tangent linear computations of : start_halo_4d
+ end   generate tangent linear computations of : start_halo_4d
+ begin generate tangent linear computations of : fv_tp_2d
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : fv_tp_2d
+ begin generate tangent linear computations of : fv_tp_2d
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ begin generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : deln_flux
+ end   generate tangent linear computations of : fv_tp_2d
+ end   generate tangent linear computations of : tracer_2d
+ end   generate tangent linear computations of : top_tracer2d
+ end   generate tangent linear computations of : top_adv
+
+=========================================
+ generate auxiliary routines
+=========================================
+
+=========================================
+ generate modules of reverse mode
+=========================================
+ begin generate adjoint module of : fv_mp_mod
+ end   generate adjoint module of : fv_mp_mod
+ begin generate adjoint module of : adj_face_mod
+       reset module variables     : adj_face_mod_constructor_ad
+ end   generate adjoint module of : adj_face_mod
+ begin generate adjoint module of : mpp_mod
+       reset module variables     : mpp_mod_constructor_ad
+ end   generate adjoint module of : mpp_mod
+ begin generate adjoint module of : fv_mapz_mod
+ end   generate adjoint module of : fv_mapz_mod
+ begin generate adjoint module of : tp_core_mod
+ end   generate adjoint module of : tp_core_mod
+ begin generate adjoint module of : fv_tracer2d_mod
+ end   generate adjoint module of : fv_tracer2d_mod
+
+=========================================
+ generate adjoint routines
+=========================================
+ begin generate adjoint computations of : top_adv
+ begin generate adjoint computations of : top_step
+ begin generate adjoint computations of : mpp_sum
+ end   generate adjoint computations of : mpp_sum
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT adj_tops.f90:200 in top_step
+ extensive recomputations are required.
+ The responsible variables are : adj_s0,adj_sum_saved
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT adj_tops.f90:200 in top_step
+TAF WARNING  triggered by      : adj_s0,adj_sum_saved[C]
+TAF WARNING  still to be recomputed : adj_s0,adj_sum_saved[C]
+ begin generate adjoint computations of : map1_q2
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1512 in map1_q2
+ extensive recomputations are required.
+ The responsible variables are : mdone
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1497 in map1_q2
+ extensive recomputations are required.
+ The responsible variables are : found
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1494 in map1_q2
+ extensive recomputations are required.
+ The responsible variables are : k0
+ begin generate adjoint computations of : ppm_profile
+ begin generate adjoint computations of : ppm_limiters
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2802 in ppm_limiters
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2775 in ppm_limiters
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+ end   generate adjoint computations of : ppm_limiters
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2745 in ppm_profile
+ extensive recomputations are required.
+ The responsible variables are : a4
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2745 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2735 in ppm_profile
+ extensive recomputations are required.
+ The responsible variables are : a4
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2735 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2681 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2709 in ppm_profile
+TAF WARNING  triggered by      : lac,qmp,a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2701 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2701 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2700 in ppm_profile
+ extensive recomputations are required.
+ The responsible variables are : a4
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2700 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2681 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING fv_mapz.f90:2681 : potential conflict due to incomplete variable(s) : h2[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2681 in ppm_profile
+TAF WARNING  triggered by      : a4[C],dc[C],h2[C]
+TAF WARNING  still to be recomputed : a4[C],h2[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2674 in ppm_profile
+ extensive recomputations are required.
+ The responsible variables are : a4
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2674 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2674 in ppm_profile
+TAF WARNING  triggered by      : a4[C],dc[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2655 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2653 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2653 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2630 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2614 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2612 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2612 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2590 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2559 in ppm_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+ end   generate adjoint computations of : ppm_profile
+ begin generate adjoint computations of : scalar_profile
+ begin generate adjoint computations of : cs_limiters
+ end   generate adjoint computations of : cs_limiters
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2024 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2020 in scalar_profile
+ extensive recomputations are required.
+ The responsible variables are : a4
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1976 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1967 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1955 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1942 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1912 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1909 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1888 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1877 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1858 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1855 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1824 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING  triggered by      : a4[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1818 in scalar_profile
+ extensive recomputations are required.
+ The responsible variables are : a4
+TAF WARNING fv_mapz.f90:1802 : potential conflict due to incomplete variable(s) : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1748 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1747 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1747 in scalar_profile
+TAF WARNING  triggered by      : a4[C],q[C]
+TAF WARNING  still to be recomputed : a4[C],q[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1699 in scalar_profile
+TAF WARNING  triggered by      : a4[C],q[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1739 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1727 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1731 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1727 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1727 in scalar_profile
+TAF WARNING  triggered by      : a4[C],gam[C],q[C]
+TAF WARNING  still to be recomputed : a4[C],q[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1699 in scalar_profile
+TAF WARNING  triggered by      : a4[C],q[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1716 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1715 in scalar_profile
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1715 in scalar_profile
+TAF WARNING  triggered by      : a4[C],q[C]
+TAF WARNING  still to be recomputed : a4[C],q[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1699 in scalar_profile
+TAF WARNING  triggered by      : a4[C],q[C]
+TAF WARNING  still to be recomputed : a4[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1675 in scalar_profile
+ extensive recomputations are required.
+ The responsible variables are : gam
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1648 in scalar_profile
+ extensive recomputations are required.
+ The responsible variables are : gam
+TAF WARNING fv_mapz.f90:1643 : potential conflict due to incomplete variable(s) : d4[C],gam[C],q[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1643 in scalar_profile
+TAF WARNING  triggered by      : a4[C],d4[C],gam[C],q[C]
+TAF WARNING  still to be recomputed : a4[C],d4[C],gam[C],q[C]
+ end   generate adjoint computations of : scalar_profile
+ end   generate adjoint computations of : map1_q2
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT adj_tops.f90:181 in top_step
+ extensive recomputations are required.
+ The responsible variables are : q3
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT adj_tops.f90:180 in top_step
+ extensive recomputations are required.
+ The responsible variables are : q3
+ begin generate adjoint computations of : tracer_2d
+ begin generate adjoint computations of : start_halo_4d
+ end   generate adjoint computations of : start_halo_4d
+ begin generate adjoint computations of : fv_tp_2d
+ begin generate adjoint computations of : deln_flux
+ begin generate adjoint computations of : copy_corners
+ end   generate adjoint computations of : copy_corners
+ end   generate adjoint computations of : deln_flux
+     regenerate adjoint              of : deln_flux
+ begin generate adjoint computations of : deln_flux
+ end   generate adjoint computations of : deln_flux
+ begin generate adjoint computations of : yppm
+ begin generate adjoint computations of : pert_ppm
+ end   generate adjoint computations of : pert_ppm
+TAF WARNING tp_core.f90:912 : potential conflict due to incomplete variable(s) : bl[C],br[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT tp_core.f90:912 in yppm
+TAF WARNING  triggered by      : bl[C],br[C]
+TAF WARNING  still to be recomputed : bl[C],br[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT tp_core.f90:905 in yppm
+ extensive recomputations are required.
+ The responsible variables are : bl,br
+TAF WARNING tp_core.f90:864 : potential conflict due to incomplete variable(s) : dq[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT tp_core.f90:864 in yppm
+TAF WARNING  triggered by      : dq[C]
+TAF WARNING  still to be recomputed : dq[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT tp_core.f90:663 in yppm
+TAF WARNING  triggered by      : dq[C]
+TAF WARNING  still to be recomputed : dq[C]
+ end   generate adjoint computations of : yppm
+ begin generate adjoint computations of : xppm
+TAF WARNING tp_core.f90:572 : potential conflict due to incomplete variable(s) : bl[C],br[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT tp_core.f90:572 in xppm
+TAF WARNING  triggered by      : bl[C],br[C]
+TAF WARNING  still to be recomputed : bl[C],br[C]
+TAF WARNING tp_core.f90:535 : potential conflict due to incomplete variable(s) : dq[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT tp_core.f90:535 in xppm
+TAF WARNING  triggered by      : dq[C]
+TAF WARNING  still to be recomputed : dq[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT tp_core.f90:360 in xppm
+TAF WARNING  triggered by      : dq[C]
+TAF WARNING  still to be recomputed : dq[C]
+ end   generate adjoint computations of : xppm
+TAF WARNING RECOMPUTATION WARNING CALL_STMT tp_core.f90:157 in fv_tp_2d
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+ end   generate adjoint computations of : fv_tp_2d
+     regenerate adjoint              of : fv_tp_2d
+ begin generate adjoint computations of : fv_tp_2d
+     regenerate adjoint              of : deln_flux
+ begin generate adjoint computations of : deln_flux
+ end   generate adjoint computations of : deln_flux
+     regenerate adjoint              of : deln_flux
+ begin generate adjoint computations of : deln_flux
+ end   generate adjoint computations of : deln_flux
+TAF WARNING RECOMPUTATION WARNING CALL_STMT tp_core.f90:157 in fv_tp_2d
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+ end   generate adjoint computations of : fv_tp_2d
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_tracer2d.f90:534 in tracer_2d
+ extensive recomputations are required.
+ The responsible variables are : q
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_tracer2d.f90:534 in tracer_2d
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_tracer2d.f90:513 in tracer_2d
+ extensive recomputations are required.
+ The responsible variables are : dp1,q
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_tracer2d.f90:513 in tracer_2d
+TAF WARNING  triggered by      : dp1[C],q[C]
+TAF WARNING  still to be recomputed : dp1[C],q[C]
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_tracer2d.f90:513 in tracer_2d
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_tracer2d.f90:503 in tracer_2d
+ extensive recomputations are required.
+ The responsible variables are : dp1
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_tracer2d.f90:503 in tracer_2d
+TAF WARNING  triggered by      : dp1[C],q[C]
+TAF WARNING  still to be recomputed : dp1[C],q[C]
+ end   generate adjoint computations of : tracer_2d
+ end   generate adjoint computations of : top_step
+ begin generate adjoint computations of : top_tracer2d
+ end   generate adjoint computations of : top_tracer2d
+ begin generate adjoint computations of : top_tp2d
+     regenerate adjoint              of : fv_tp_2d
+ begin generate adjoint computations of : fv_tp_2d
+     regenerate adjoint              of : deln_flux
+ begin generate adjoint computations of : deln_flux
+ end   generate adjoint computations of : deln_flux
+     regenerate adjoint              of : deln_flux
+ begin generate adjoint computations of : deln_flux
+ end   generate adjoint computations of : deln_flux
+TAF WARNING RECOMPUTATION WARNING CALL_STMT tp_core.f90:157 in fv_tp_2d
+TAF WARNING  triggered by      : q[C]
+TAF WARNING  still to be recomputed : q[C]
+ end   generate adjoint computations of : fv_tp_2d
+ end   generate adjoint computations of : top_tp2d
+ end   generate adjoint computations of : top_adv
+
+=========================================
+ generate auxiliary routines
+=========================================
+ generate initialization of global adjoint variables
+
+=========================================
+ Fortran dialect transformations
+=========================================
+
+=========================================
+ write forward and reverse mode code
+=========================================
+./taf_ad.f90:
+./stubs_ad.f90:
+ writing module     ** fv_arrays_mod **
+ writing module     ** boundary_mod **
+         subroutine ** nested_grid_bc_apply_intt **
+ writing module     ** constants_mod **
+ writing module     ** field_manager_mod **
+ writing module     ** fv_cmp_mod **
+         subroutine ** fv_sat_adj **
+         subroutine ** qs_init **
+ writing module     ** mpp_domains_mod **
+         subroutine ** adj_set_cgrid_halo **
+         subroutine ** mpp_get_boundary **
+         subroutine ** update_2d **
+         subroutine ** update_3d **
+         subroutine ** update_vec_3d **
+         function   ** which_field **
+ writing module     ** fv_grid_utils_mod **
+         function   ** g_sum **
+ writing module     ** fv_mp_mod **
+         subroutine ** complete_group_halo_update **
+         function   ** is_master **
+         subroutine ** mp_gather **
+         subroutine ** mp_reduce_max **
+         subroutine ** start_halo_3d **
+         subroutine ** start_halo_4d **
+         subroutine ** start_halo_4d_ad **
+         subroutine ** start_halo_4d_tl **
+ writing module     ** fv_timing_mod **
+         subroutine ** timing_off **
+         subroutine ** timing_on **
+ writing module     ** mpp_mod **
+         function   ** get_unit **
+         subroutine ** mpp_broadcast **
+         subroutine ** mpp_error **
+         subroutine ** mpp_max **
+         subroutine ** mpp_mod_constructor_ad **
+         function   ** mpp_pe **
+         subroutine ** mpp_recv **
+         function   ** mpp_root_pe **
+         subroutine ** mpp_send **
+         subroutine ** mpp_sum **
+         subroutine ** mpp_sum_ad **
+         subroutine ** mpp_sum_tl **
+ writing module     ** platform_mod **
+ writing module     ** tracer_manager_mod **
+         function   ** get_tracer_index **
+./tp_core_ad.f90:
+ writing module     ** tp_core_mod **
+         subroutine ** copy_corners **
+         subroutine ** copy_corners_ad **
+         subroutine ** copy_corners_tl **
+         subroutine ** deln_flux **
+         subroutine ** deln_flux_ad **
+         subroutine ** deln_flux_tl **
+         subroutine ** fv_tp_2d **
+         subroutine ** fv_tp_2d_ad **
+         subroutine ** fv_tp_2d_tl **
+         subroutine ** mp_ghost_ew **
+         subroutine ** pert_ppm **
+         subroutine ** pert_ppm_ad **
+         subroutine ** pert_ppm_tl **
+         subroutine ** xppm **
+         subroutine ** xppm_ad **
+         subroutine ** xppm_tl **
+         subroutine ** yppm **
+         subroutine ** yppm_ad **
+         subroutine ** yppm_tl **
+./fv_fill_ad.f90:
+ writing module     ** fv_fill_mod **
+         subroutine ** fill2d **
+         subroutine ** fill_gfs **
+         subroutine ** fillz **
+./fv_mapz_ad.f90:
+ writing module     ** fv_mapz_mod **
+         subroutine ** compute_total_energy **
+         subroutine ** cs_limiters **
+         subroutine ** cs_limiters_ad **
+         subroutine ** cs_limiters_tl **
+         subroutine ** cs_profile **
+         subroutine ** lagrangian_to_eulerian **
+         subroutine ** map1_cubic **
+         subroutine ** map1_ppm **
+         subroutine ** map1_q2 **
+         subroutine ** map1_q2_ad **
+         subroutine ** map1_q2_tl **
+         subroutine ** map_scalar **
+         subroutine ** mapn_tracer **
+         subroutine ** mappm **
+         subroutine ** moist_cp **
+         subroutine ** moist_cv **
+         subroutine ** pkez **
+         subroutine ** ppm_limiters **
+         subroutine ** ppm_limiters_ad **
+         subroutine ** ppm_limiters_tl **
+         subroutine ** ppm_profile **
+         subroutine ** ppm_profile_ad **
+         subroutine ** ppm_profile_tl **
+         subroutine ** remap_2d **
+         subroutine ** remap_z **
+         subroutine ** rst_remap **
+         subroutine ** scalar_profile **
+         subroutine ** scalar_profile_ad **
+         subroutine ** scalar_profile_tl **
+         subroutine ** steepz **
+./fv_tracer2d_ad.f90:
+ writing module     ** fv_tracer2d_mod **
+         function   ** calcscalingfactor **
+         function   ** calcscalingfactortrop **
+         subroutine ** offline_tracer_advection **
+         subroutine ** tracer_2d **
+         subroutine ** tracer_2d_1l **
+         subroutine ** tracer_2d_ad **
+         subroutine ** tracer_2d_nested **
+         subroutine ** tracer_2d_tl **
+./adj_face_mod_ad.f90:
+ writing module     ** adj_face_mod **
+         subroutine ** adj_face_mod_constructor_ad **
+         subroutine ** dump_step **
+         subroutine ** load_face **
+         subroutine ** read_r8 **
+./adj_tops_ad.f90:
+ writing subroutine ** top_adv_tl **
+ writing subroutine ** top_adv_ad **
+ writing subroutine ** top_adv **
+ writing subroutine ** top_offline **
+ writing subroutine ** top_step_tl **
+ writing subroutine ** top_step_ad **
+ writing subroutine ** top_step **
+ writing subroutine ** top_tp2d_tl **
+ writing subroutine ** top_tp2d_ad **
+ writing subroutine ** top_tp2d **
+ writing subroutine ** top_tracer2d_tl **
+ writing subroutine ** top_tracer2d_ad **
+ writing subroutine ** top_tracer2d **
+ writing subroutine ** zero_ad **
+

@@ -275,17 +275,23 @@ contains
     real, intent(inout) :: q(:,:,:,:)
     type(domain2d), intent(inout) :: domain
     integer :: i, j, k, l, ni, nj
-    if (.not. adj_qhalo_fill) return
-    ni = size(q, 1); nj = size(q, 2)
-    do l = 1, size(q, 4)
-       do k = 1, size(q, 3)
-          do j = 1, nj
-             do i = 1, ni
-                if (i <= ng .or. i > ni-ng .or. j <= ng .or. j > nj-ng) q(i,j,k,l) = adj_qhalo(i,j,k,l)
+    real :: w
+    ! Written as a blend with w = 0 (halo) or 1 (interior), not as a conditional assignment: TAF
+    ! treats a conditional overwrite of elements inside loops over the whole array as a kill of q.
+    if (adj_qhalo_fill) then
+       ni = size(q, 1); nj = size(q, 2)
+       do l = 1, size(q, 4)
+          do k = 1, size(q, 3)
+             do j = 1, nj
+                do i = 1, ni
+                   w = 1.
+                   if (i <= ng .or. i > ni-ng .or. j <= ng .or. j > nj-ng) w = 0.
+                   q(i,j,k,l) = w*q(i,j,k,l) + (1.-w)*adj_qhalo(i,j,k,l)
+                enddo
              enddo
           enddo
        enddo
-    enddo
+    endif
   end subroutine start_halo_4d
 
   subroutine complete_group_halo_update(pack, domain)
