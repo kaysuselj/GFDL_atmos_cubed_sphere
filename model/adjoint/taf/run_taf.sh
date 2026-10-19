@@ -13,7 +13,8 @@ D=$(cd "$(dirname "$0")" && pwd); A=$(dirname "$D"); M=$(dirname "$A")
 W=$D/work; rm -rf "$W"; mkdir -p "$W"; cd "$W"
 SRC="$A/stubs/stubs $M/tp_core $M/fv_fill $M/fv_mapz $M/fv_tracer2d $A/driver/adj_face_mod $A/driver/adj_tops"
 FILES=""
-for f in $SRC; do b=$(basename $f); gfortran -E -cpp -P $f.F90 > $b.f90 2>/dev/null; FILES="$FILES $b.f90"; done
+# CPP definitions of GCHP's fvdycore build (fvdycore/CMakeLists.txt), as in the Makefile
+for f in $SRC; do b=$(basename $f); gfortran -E -cpp -P -DMAPL_MODE -DSPMD -DTIMING $f.F90 > $b.f90 2>/dev/null; FILES="$FILES $b.f90"; done
 gfortran -E -cpp -P "$D/map1_q2_structured.F90" > map1_q2_structured.f90
 python3 -I - fv_mapz.f90 map1_q2_structured.f90 <<'PYEOF'
 import re, sys
@@ -35,6 +36,23 @@ if grep -E "do not depend|have no influence" taf.log; then echo "TAF dependence 
 grep -E "irreducible" taf.log || true
 G=$D/gen; rm -rf "$G"; mkdir -p "$G"
 for f in $FILES; do cp "${f%.f90}_ad.f90" "$G/"; done
+# TAF declares the adjoint of q intent(in) in start_halo_{3,4}d_ad, although the black-box adjoint
+# adj_halo_q_ad overwrites it (ADKILL is honoured for adj_global_sum but not here): make it inout
+python3 -I - "$G/stubs_ad.f90" <<'PYEOF'
+import re, sys
+t = open(sys.argv[1]).read()
+def fix(m):
+    return m.group(0).replace('real, intent(in) :: q_ad(', 'real, intent(inout) :: q_ad(')
+t, n = re.subn(r'(?is)subroutine start_halo_[34]d_ad\(.*?end subroutine start_halo_[34]d_ad', fix, t)
+assert n >= 1 and "intent(inout) :: q_ad(" in t, n
+open(sys.argv[1], 'w').write(t)
+PYEOF
 cp taf.log "$G/taf.log"; cp fv_mapz.f90 "$G/fv_mapz_tafinput.f90"
+# the back-ends (comm/*.F90) implement the black-box routines with these argument lists; the calls
+# go through implicit interfaces, so check that TAF still generates them in this form
+for c in "call adj_halo_q( q,help_h,help_i,help_j )" "call adj_halo_q_ad( q,q_ad,help_h,help_i,help_j )" \
+         "call adj_halo_q( q_tl,help_h,help_i,help_j )" "call adj_global_sum( a_ad,n )" "call adj_global_sum( a_tl,n )"; do
+    grep -qF "$c" "$G/stubs_ad.f90" || { echo "generated black-box call changed, expected: $c"; exit 1; }
+done
 echo "TAF output in $G:"; wc -l "$G"/*_ad.f90 | tail -1
 grep -ihE "^ *subroutine [a-z0-9_]*_(tl|ad) *\(" "$G"/*_ad.f90 | sed 's/(.*//' | sort -u | tr -s ' ' | tr '\n' ' '; echo

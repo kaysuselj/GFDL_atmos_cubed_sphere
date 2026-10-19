@@ -104,9 +104,6 @@ fv_tracer2d.f90:
 
 adj_face_mod.f90:
  parsing module     ** adj_face_mod **
-         subroutine ** read_r8 **
-         subroutine ** load_face **
-         subroutine ** dump_step **
 
 adj_tops.f90:
  parsing subroutine ** top_tp2d **
@@ -150,7 +147,7 @@ adj_tops.f90:
 
  the   dependent variable(s) are : fx,fy,qc,qh
 
-TAF WARNING toplevel routine overwrites the  input variables : adj_s0,adj_sum_saved[C],qc[C],qh[C]
+TAF WARNING toplevel routine overwrites the  input variables : adj_s0,qc[C],qh[C]
 
 =========================================
  generate modules of forward mode
@@ -161,7 +158,6 @@ TAF WARNING toplevel routine overwrites the  input variables : adj_s0,adj_sum_sa
        reset module variables            : adj_face_mod_constructor_tl
  end   generate tangent linear module of : adj_face_mod
  begin generate tangent linear module of : mpp_mod
-       reset module variables            : mpp_mod_constructor_tl
  end   generate tangent linear module of : mpp_mod
  begin generate tangent linear module of : fv_mapz_mod
  end   generate tangent linear module of : fv_mapz_mod
@@ -251,7 +247,6 @@ TAF WARNING toplevel routine overwrites the  input variables : adj_s0,adj_sum_sa
        reset module variables     : adj_face_mod_constructor_ad
  end   generate adjoint module of : adj_face_mod
  begin generate adjoint module of : mpp_mod
-       reset module variables     : mpp_mod_constructor_ad
  end   generate adjoint module of : mpp_mod
  begin generate adjoint module of : fv_mapz_mod
  end   generate adjoint module of : fv_mapz_mod
@@ -269,217 +264,217 @@ TAF WARNING toplevel routine overwrites the  input variables : adj_s0,adj_sum_sa
  end   generate adjoint computations of : mpp_sum
 TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT adj_tops.f90:200 in top_step
  extensive recomputations are required.
- The responsible variables are : adj_s0,adj_sum_saved
+ The responsible variables are : adj_s0
 TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT adj_tops.f90:200 in top_step
-TAF WARNING  triggered by      : adj_s0,adj_sum_saved[C]
-TAF WARNING  still to be recomputed : adj_s0,adj_sum_saved[C]
+TAF WARNING  triggered by      : adj_s0
+TAF WARNING  still to be recomputed : adj_s0
  begin generate adjoint computations of : map1_q2
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1512 in map1_q2
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1530 in map1_q2
  extensive recomputations are required.
  The responsible variables are : mdone
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1497 in map1_q2
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1515 in map1_q2
  extensive recomputations are required.
  The responsible variables are : found
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1494 in map1_q2
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1512 in map1_q2
  extensive recomputations are required.
  The responsible variables are : k0
  begin generate adjoint computations of : ppm_profile
  begin generate adjoint computations of : ppm_limiters
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2802 in ppm_limiters
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2820 in ppm_limiters
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2775 in ppm_limiters
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2793 in ppm_limiters
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
  end   generate adjoint computations of : ppm_limiters
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2745 in ppm_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2763 in ppm_profile
  extensive recomputations are required.
  The responsible variables are : a4
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2745 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2763 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2735 in ppm_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2753 in ppm_profile
  extensive recomputations are required.
  The responsible variables are : a4
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2735 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2753 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2681 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2699 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2709 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2727 in ppm_profile
 TAF WARNING  triggered by      : lac,qmp,a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2701 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2719 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2701 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2719 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2700 in ppm_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2718 in ppm_profile
  extensive recomputations are required.
  The responsible variables are : a4
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2700 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2718 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2681 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2699 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING fv_mapz.f90:2681 : potential conflict due to incomplete variable(s) : h2[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2681 in ppm_profile
+TAF WARNING fv_mapz.f90:2699 : potential conflict due to incomplete variable(s) : h2[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2699 in ppm_profile
 TAF WARNING  triggered by      : a4[C],dc[C],h2[C]
 TAF WARNING  still to be recomputed : a4[C],h2[C]
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2674 in ppm_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2692 in ppm_profile
  extensive recomputations are required.
  The responsible variables are : a4
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2674 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2692 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2674 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2692 in ppm_profile
 TAF WARNING  triggered by      : a4[C],dc[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2655 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2673 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2653 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2671 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2653 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2671 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2630 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2648 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2614 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:2632 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2612 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2630 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2612 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2630 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2590 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2608 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2559 in ppm_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:2577 in ppm_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
  end   generate adjoint computations of : ppm_profile
  begin generate adjoint computations of : scalar_profile
  begin generate adjoint computations of : cs_limiters
  end   generate adjoint computations of : cs_limiters
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2024 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:2042 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2020 in scalar_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:2038 in scalar_profile
  extensive recomputations are required.
  The responsible variables are : a4
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1976 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1994 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1967 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1985 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1837 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1955 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1973 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1942 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1960 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1837 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1912 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1930 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1909 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1927 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1837 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1888 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1906 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1877 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1895 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1858 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1876 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1855 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1873 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1837 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1824 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1842 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1837 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1819 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1837 in scalar_profile
 TAF WARNING  triggered by      : a4[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1818 in scalar_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1836 in scalar_profile
  extensive recomputations are required.
  The responsible variables are : a4
-TAF WARNING fv_mapz.f90:1802 : potential conflict due to incomplete variable(s) : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1748 in scalar_profile
+TAF WARNING fv_mapz.f90:1820 : potential conflict due to incomplete variable(s) : a4[C]
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1766 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1747 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1765 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1747 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1765 in scalar_profile
 TAF WARNING  triggered by      : a4[C],q[C]
 TAF WARNING  still to be recomputed : a4[C],q[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1699 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1717 in scalar_profile
 TAF WARNING  triggered by      : a4[C],q[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1739 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1757 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1727 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1745 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1731 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1749 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1727 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1745 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1727 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1745 in scalar_profile
 TAF WARNING  triggered by      : a4[C],gam[C],q[C]
 TAF WARNING  still to be recomputed : a4[C],q[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1699 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1717 in scalar_profile
 TAF WARNING  triggered by      : a4[C],q[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1716 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING ASSIGN_STMT fv_mapz.f90:1734 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1715 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1733 in scalar_profile
 TAF WARNING  triggered by      : q[C]
 TAF WARNING  still to be recomputed : q[C]
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1715 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT fv_mapz.f90:1733 in scalar_profile
 TAF WARNING  triggered by      : a4[C],q[C]
 TAF WARNING  still to be recomputed : a4[C],q[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1699 in scalar_profile
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1717 in scalar_profile
 TAF WARNING  triggered by      : a4[C],q[C]
 TAF WARNING  still to be recomputed : a4[C]
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1675 in scalar_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1693 in scalar_profile
  extensive recomputations are required.
  The responsible variables are : gam
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1648 in scalar_profile
+TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1666 in scalar_profile
  extensive recomputations are required.
  The responsible variables are : gam
-TAF WARNING fv_mapz.f90:1643 : potential conflict due to incomplete variable(s) : d4[C],gam[C],q[C]
-TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1643 in scalar_profile
+TAF WARNING fv_mapz.f90:1661 : potential conflict due to incomplete variable(s) : d4[C],gam[C],q[C]
+TAF WARNING RECOMPUTATION WARNING IF_STMT fv_mapz.f90:1661 in scalar_profile
 TAF WARNING  triggered by      : a4[C],d4[C],gam[C],q[C]
 TAF WARNING  still to be recomputed : a4[C],d4[C],gam[C],q[C]
  end   generate adjoint computations of : scalar_profile
@@ -637,7 +632,6 @@ TAF WARNING  still to be recomputed : q[C]
          subroutine ** mpp_broadcast **
          subroutine ** mpp_error **
          subroutine ** mpp_max **
-         subroutine ** mpp_mod_constructor_ad **
          function   ** mpp_pe **
          subroutine ** mpp_recv **
          function   ** mpp_root_pe **
@@ -719,9 +713,6 @@ TAF WARNING  still to be recomputed : q[C]
 ./adj_face_mod_ad.f90:
  writing module     ** adj_face_mod **
          subroutine ** adj_face_mod_constructor_ad **
-         subroutine ** dump_step **
-         subroutine ** load_face **
-         subroutine ** read_r8 **
 ./adj_tops_ad.f90:
  writing subroutine ** top_adv_tl **
  writing subroutine ** top_adv_ad **

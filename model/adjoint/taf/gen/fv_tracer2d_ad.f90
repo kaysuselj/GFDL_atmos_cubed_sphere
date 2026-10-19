@@ -1003,6 +1003,7 @@ q(i,j,k,iq) = (qn2(i,j,iq)*dp1(i,j,k)+(fx(i,j)-fx(i+1,j)+(fy(i,j)-fy(i,j+1)))*ra
     ksplt(k) = 1
   end do
   if (q_split == 0) then
+    call mp_reduce_max( cmax,npz )
     c_global = cmax(1)
     if (npz /= 1) then
       do k = 2, npz
@@ -1585,6 +1586,7 @@ q(i,j,k,iq1) = (q(i,j,k,iq1)*dp1(i,j,k)+(fx(i,j)-fx(i+1,j)+(fy(i,j)-fy(i,j+1)))*
     ksplt(k) = 1
   end do
   if (q_split == 0) then
+    call mp_reduce_max( cmax,npz )
     c_global = cmax(1)
     if (npz /= 1) then
       do k = 2, npz

@@ -622,17 +622,6 @@ type, public :: group_halo_update_type
 end type
 
 !==============================================
-! declare local variables
-!==============================================
-real, public, allocatable :: adj_qhalo(:,:,:,:)
-logical, public :: adj_qhalo_fill =  .false. 
-
-!==============================================
-! declare saved variables
-!==============================================
-save adj_qhalo
-
-!==============================================
 ! generic interfaces
 !==============================================
 interface start_group_halo_update
@@ -718,6 +707,7 @@ contains
   integer, intent(in) :: n
   real, intent(inout) :: a(n)
 
+  call adj_reduce_max( a,n )
   end subroutine mp_reduce_max
   subroutine start_halo_3d( pack, q, domain )
 !******************************************************************
@@ -735,6 +725,17 @@ contains
   type(group_halo_update_type), intent(inout) :: pack
   real, intent(inout) :: q(:,:,:)
 
+!==============================================
+! declare local variables
+!==============================================
+  integer :: help_h
+  integer :: help_i
+  integer :: help_j
+
+  help_h = size(q,1)
+  help_i = size(q,2)
+  help_j = size(q,3)
+  call adj_halo_q( q,help_h,help_i,help_j )
   end subroutine start_halo_3d
   subroutine start_halo_4d( pack, q, domain )
 !******************************************************************
@@ -755,31 +756,14 @@ contains
 !==============================================
 ! declare local variables
 !==============================================
-  integer :: i
-  integer :: j
-  integer :: k
-  integer :: l
-  integer :: ni
-  integer :: nj
-  real :: w
+  integer :: help_h
+  integer :: help_i
+  integer :: help_j
 
-  if (adj_qhalo_fill) then
-    ni = size(q,1)
-    nj = size(q,2)
-    do l = 1, size(q,4)
-      do k = 1, size(q,3)
-        do j = 1, nj
-          do i = 1, ni
-            w = 1.
-            if (i <= ng .or. i > ni-ng .or. j <= ng .or. j > nj-ng) then
-              w = 0.
-            endif
-            q(i,j,k,l) = w*q(i,j,k,l)+(1.-w)*adj_qhalo(i,j,k,l)
-          end do
-        end do
-      end do
-    end do
-  endif
+  help_h = size(q,1)
+  help_i = size(q,2)
+  help_j = size(q,3)*size(q,4)
+  call adj_halo_q( q,help_h,help_i,help_j )
   end subroutine start_halo_4d
   subroutine start_halo_4d_ad( q, q_ad )
 !******************************************************************
@@ -799,31 +783,14 @@ contains
 !==============================================
 ! declare local variables
 !==============================================
-  integer :: i
-  integer :: j
-  integer :: k
-  integer :: l
-  integer :: ni
-  integer :: nj
-  real :: w
+  integer :: help_h
+  integer :: help_i
+  integer :: help_j
 
-  if (adj_qhalo_fill) then
-    ni = size(q,1)
-    nj = size(q,2)
-    do l = size(q,4), 1, -1
-      do k = 1, size(q,3)
-        do j = 1, nj
-          do i = 1, ni
-            w = 1.
-            if (i <= ng .or. i > ni-ng .or. j <= ng .or. j > nj-ng) then
-              w = 0.
-            endif
-            q_ad(i,j,k,l) = q_ad(i,j,k,l)*w
-          end do
-        end do
-      end do
-    end do
-  endif
+  help_h = size(q,1)
+  help_i = size(q,2)
+  help_j = size(q,3)*size(q,4)
+  call adj_halo_q_ad( q,q_ad,help_h,help_i,help_j )
 
   end subroutine start_halo_4d_ad
   subroutine start_halo_4d_tl( pack, q, q_tl, domain )
@@ -846,35 +813,18 @@ contains
 !==============================================
 ! declare local variables
 !==============================================
-  integer :: i
-  integer :: j
-  integer :: k
-  integer :: l
-  integer :: ni
-  integer :: nj
-  real :: w
+  integer :: help_h
+  integer :: help_i
+  integer :: help_j
 
 !----------------------------------------------
 ! TANGENT LINEAR AND FUNCTION STATEMENTS
 !----------------------------------------------
-  if (adj_qhalo_fill) then
-    ni = size(q,1)
-    nj = size(q,2)
-    do l = 1, size(q,4)
-      do k = 1, size(q,3)
-        do j = 1, nj
-          do i = 1, ni
-            w = 1.
-            if (i <= ng .or. i > ni-ng .or. j <= ng .or. j > nj-ng) then
-              w = 0.
-            endif
-            q_tl(i,j,k,l) = q_tl(i,j,k,l)*w
-            q(i,j,k,l) = w*q(i,j,k,l)+(1.-w)*adj_qhalo(i,j,k,l)
-          end do
-        end do
-      end do
-    end do
-  endif
+  help_h = size(q,1)
+  help_i = size(q,2)
+  help_j = size(q,3)*size(q,4)
+  call adj_halo_q( q_tl,help_h,help_i,help_j )
+  call adj_halo_q( q,help_h,help_i,help_j )
 
   end subroutine start_halo_4d_tl
 end module     fv_mp_mod
@@ -936,15 +886,6 @@ implicit none
 integer, parameter :: fatal = 2
 integer, parameter :: note = 0
 integer, parameter :: warning = 1
-
-!==============================================
-! declare local variables
-!==============================================
-integer :: adj_sum_mode = 0
-integer :: adj_sum_n = 0
-real :: adj_sum_saved(8) = 0.
-real :: adj_sum_saved_ad(8)
-real :: adj_sum_saved_tl(8) = 0.
 
 contains
   function   get_unit()
@@ -1015,21 +956,6 @@ contains
   real, intent(inout) :: a
 
   end subroutine mpp_max
-  subroutine mpp_mod_constructor_ad()
-!******************************************************************
-!******************************************************************
-!** This routine was generated by Automatic differentiation.     **
-!** FastOpt: Transformation of Algorithm in Fortran, TAF 6.8.11  **
-!******************************************************************
-!******************************************************************
-  implicit none
-
-!----------------------------------------------
-! RESET ADJOINT MODULE VARIABLES
-!----------------------------------------------
-  adj_sum_saved_ad(:) = 0.
-
-  end subroutine mpp_mod_constructor_ad
   function   mpp_pe()
 !******************************************************************
 !******************************************************************
@@ -1111,21 +1037,7 @@ contains
   integer, intent(in) :: n
   real, intent(inout) :: a(n)
 
-!==============================================
-! declare local variables
-!==============================================
-  integer :: i
-
-  if (adj_sum_mode == 1) then
-    adj_sum_n = n
-    do i = 1, n
-      adj_sum_saved(i) = a(i)
-    end do
-  else if (adj_sum_mode == 2) then
-    do i = 1, n
-      a(i) = adj_sum_saved(i)
-    end do
-  endif
+  call adj_global_sum( a,n )
   end subroutine mpp_sum
   subroutine mpp_sum_ad( a_ad, n )
 !******************************************************************
@@ -1142,22 +1054,7 @@ contains
   integer, intent(in) :: n
   real, intent(inout) :: a_ad(n)
 
-!==============================================
-! declare local variables
-!==============================================
-  integer :: i
-
-  if (adj_sum_mode == 1) then
-    do i = 1, n
-      a_ad(i) = a_ad(i)+adj_sum_saved_ad(i)
-      adj_sum_saved_ad(i) = 0.
-    end do
-  else if (adj_sum_mode == 2) then
-    do i = 1, n
-      adj_sum_saved_ad(i) = adj_sum_saved_ad(i)+a_ad(i)
-      a_ad(i) = 0.
-    end do
-  endif
+  call adj_global_sum( a_ad,n )
 
   end subroutine mpp_sum_ad
   subroutine mpp_sum_tl( a, a_tl, n )
@@ -1176,25 +1073,11 @@ contains
   real, intent(inout) :: a(n)
   real, intent(inout) :: a_tl(n)
 
-!==============================================
-! declare local variables
-!==============================================
-  integer :: i
-
 !----------------------------------------------
 ! TANGENT LINEAR AND FUNCTION STATEMENTS
 !----------------------------------------------
-  if (adj_sum_mode == 1) then
-    do i = 1, n
-      adj_sum_saved_tl(i) = a_tl(i)
-      adj_sum_saved(i) = a(i)
-    end do
-  else if (adj_sum_mode == 2) then
-    do i = 1, n
-      a_tl(i) = adj_sum_saved_tl(i)
-      a(i) = adj_sum_saved(i)
-    end do
-  endif
+  call adj_global_sum( a_tl,n )
+  call adj_global_sum( a,n )
 
   end subroutine mpp_sum_tl
 end module     mpp_mod

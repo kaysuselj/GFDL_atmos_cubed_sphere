@@ -71,7 +71,6 @@ subroutine top_adv_ad( mode, qh, qh_ad, qc, qc_ad, fx, fx_ad, fy, fy_ad )
 ! referencing used modules
 !==============================================
 use adj_face_mod
-use mpp_mod, only : adj_sum_saved
 
 implicit none
 
@@ -92,7 +91,6 @@ real, intent(inout) :: qh_ad(isd:ied,jsd:jed,npz,nq)
 ! declare local variables
 !==============================================
 real :: adj_s0h = 1.
-real :: adj_sum_savedh(lbound(adj_sum_saved,1):ubound(adj_sum_saved,1))
 real :: qch(lbound(qc,1):ubound(qc,1),lbound(qc,2):ubound(qc,2),lbound(qc,3):ubound(qc,3),lbound(qc,4):ubound(qc,4))
 real :: qhh(lbound(qh,1):ubound(qh,1),lbound(qh,2):ubound(qh,2),lbound(qh,3):ubound(qh,3),lbound(qh,4):ubound(qh,4))
 real :: qhi(lbound(qh,1):ubound(qh,1),lbound(qh,2):ubound(qh,2),lbound(qh,3):ubound(qh,3),lbound(qh,4):ubound(qh,4))
@@ -102,7 +100,6 @@ real :: qhi(lbound(qh,1):ubound(qh,1),lbound(qh,2):ubound(qh,2),lbound(qh,3):ubo
 !----------------------------------------------
 qhi(:,:,:,:) = qh
 qch(:,:,:,:) = qc
-adj_sum_savedh(:) = adj_sum_saved
 adj_s0h = adj_s0
 
 !----------------------------------------------
@@ -130,7 +127,6 @@ qhh(:,:,:,:) = qh
 ! ADJOINT COMPUTATIONS
 !----------------------------------------------
 adj_s0 = adj_s0h
-adj_sum_saved = adj_sum_savedh(:)
 qc = qch(:,:,:,:)
 qh = qhi(:,:,:,:)
 if (mode == 1) then
@@ -388,7 +384,7 @@ use adj_face_mod
 use fv_mp_mod, only : start_group_halo_update,start_group_halo_update_ad
 use fv_tracer2d_mod, only : tracer_2d,tracer_2d_ad
 use fv_mapz_mod, only : map1_q2,map1_q2_ad
-use mpp_mod, only : adj_sum_saved,mpp_sum,mpp_sum_ad
+use mpp_mod, only : mpp_sum,mpp_sum_ad
 
 implicit none
 
@@ -407,7 +403,6 @@ real, intent(inout) :: q_ad(is:ie,js:je,npz,nq)
 ! declare local variables
 !==============================================
 real :: adj_s0h = 1.
-real :: adj_sum_savedh(lbound(adj_sum_saved,1):ubound(adj_sum_saved,1))
 real :: cxl(is:ie+1,jsd:jed,npz)
 real :: cyl(isd:ied,js:je+1,npz)
 real :: dp2(is:ie,js:je,npz)
@@ -427,7 +422,7 @@ real :: mfxl(is:ie+1,js:je,npz)
 real :: mfyl(is:ie,js:je+1,npz)
 real :: partialsums(3,npz)
 real :: partialsums_ad(3,npz)
-real :: partialsumsh_ad(is:ie,js:je)
+real, allocatable :: partialsumsh_ad(:,:)
 real :: pe1(is:ie,npz+1)
 real :: pe2(is:ie,npz+1)
 real :: q1(is:ie,js:je,npz)
@@ -439,7 +434,7 @@ real :: scalingfactor
 real :: scalingfactor_ad
 real :: tempsum
 real :: tempsum_ad
-real :: tempsumh_ad(is:ie,js:je)
+real, allocatable :: tempsumh_ad(:,:)
 
 !==============================================
 ! generic interfaces
@@ -448,7 +443,6 @@ real :: tempsumh_ad(is:ie,js:je)
 !----------------------------------------------
 ! SAVE REQUIRED INPUT VARIABLES
 !----------------------------------------------
-adj_sum_savedh(:) = adj_sum_saved
 adj_s0h = adj_s0
 
 !----------------------------------------------
@@ -461,6 +455,8 @@ q3_ad(:,:,:,:) = 0.
 scalingfactor_ad = 0.
 tempsum_ad = 0.
 
+allocate( partialsumsh_ad(is:ie,js:je) )
+allocate( tempsumh_ad(is:ie,js:je) )
 !$taf INCOMPLETE dp2,pe1,pe2
 cxl = cx_e
 cyl = cy_e
@@ -500,7 +496,6 @@ do iq = 1, nq
 end do
 do iq = nq, 1, -1
   adj_s0 = adj_s0h
-  adj_sum_saved = adj_sum_savedh(:)
   do iq1 = 1, iq-1
     if (adj_freeze_s) then
     else
@@ -686,6 +681,8 @@ call tracer_2d_ad( q3,q3_ad,dpl,mfxl,mfyl,cxl,cyl,gridstruct,bd,npx,npy,npz,nq,f
 call start_group_halo_update_ad( q3,q3_ad )
 q_ad(is:ie,js:je,:,:) = q_ad(is:ie,js:je,:,:)+q3_ad(is:ie,js:je,:,:)
 q3_ad(is:ie,js:je,:,:) = 0.
+deallocate( partialsumsh_ad )
+deallocate( tempsumh_ad )
 
 !----------------------------------------------
 ! FREE DYNAMIC MEMORY
@@ -1181,7 +1178,6 @@ subroutine zero_ad()
 ! referencing used modules
 !==============================================
 use adj_face_mod
-use mpp_mod, only : mpp_mod_constructor_ad
 
 implicit none
 
@@ -1190,6 +1186,5 @@ implicit none
 ! reset adjoint module variables
 !----------------------------------------------
 call adj_face_mod_constructor_ad
-call mpp_mod_constructor_ad
 
 end subroutine zero_ad

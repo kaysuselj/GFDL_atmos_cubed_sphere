@@ -254,12 +254,30 @@ contains
        rcp = 1./ cp
        rrg = -rdgas/grav
 
-       liq_wat = get_tracer_index (MODEL_ATMOS, 'liq_wat')
-       ice_wat = get_tracer_index (MODEL_ATMOS, 'ice_wat')
-       rainwat = get_tracer_index (MODEL_ATMOS, 'rainwat')
-       snowwat = get_tracer_index (MODEL_ATMOS, 'snowwat')
-       graupel = get_tracer_index (MODEL_ATMOS, 'graupel')
-       cld_amt = get_tracer_index (MODEL_ATMOS, 'cld_amt')
+
+       select case(nwat)
+       case(1)
+        liq_wat = -1
+        ice_wat = -1
+        rainwat = -1
+        snowwat = -1
+        graupel = -1
+        cld_amt = -1
+       case(3)
+        liq_wat = 2
+        ice_wat = 3
+        rainwat = -1
+        snowwat = -1
+        graupel = -1
+        cld_amt = -1
+       case(6)
+        liq_wat = 2
+        ice_wat = 3
+        rainwat = 4
+        snowwat = 5
+        graupel = 6
+        cld_amt = 7
+       end select
 
        if ( do_sat_adj ) then
             fast_mp_consv = (.not.do_adiabatic_init) .and. consv>consv_min

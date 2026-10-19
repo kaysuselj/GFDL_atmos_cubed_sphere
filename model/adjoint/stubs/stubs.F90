@@ -19,14 +19,37 @@
 !* If not, see <http://www.gnu.org/licenses/>.
 !***********************************************************************
 
-!>@brief Single-face stand-ins for FMS and the FV3 modules that tp_core.F90, fv_tracer2d.F90,
-!! fv_mapz.F90 and fv_fill.F90 use, so that these forward files compile unchanged for the
-!! standalone TL/AD tests (model/adjoint). One process, one cube face, no MPI.
-!>@details Halo exchanges of q are no-ops: the q halo is either an input of the test operator
-!! (tracer_2d level) or zero (offline_tracer_advection zeroes it). The C-grid winds are not active
-!! variables; their "exchange" copies the halo values that the driver loaded from the global field
-!! (see mpp_domains_mod). mpp_sum is the identity on one face, or returns frozen sums (mass fixer
-!! with a frozen scaling factor, see mpp_mod).
+!>@brief Stand-ins for FMS and the FV3 modules that tp_core.F90, fv_tracer2d.F90, fv_mapz.F90 and
+!! fv_fill.F90 use, so that these forward files compile unchanged for the standalone TL/AD tests
+!! (model/adjoint), and so that TAF sees all the code it differentiates.
+!>@details The communication that matters for the adjoint goes through three external routines of
+!! a back-end, which TAF treats as black boxes (directives below):
+!!  - adj_halo_q(q, ni, nj, nk): halo update of q (start_group_halo_update), linear; its TL is the
+!!    routine itself, its AD is adj_halo_q_ad;
+!!  - adj_global_sum(a, n): mpp_sum, linear and self-adjoint (y_r = sum over ranks of x_r);
+!!  - adj_reduce_max(a, n): mp_reduce_max (Courant number -> nsplt), passive.
+!! Back-ends: comm/adj_comm_single.F90 (one face, no MPI) and comm/adj_comm_fms.F90 (six faces,
+!! FMS, the GCHP group halo update). complete_group_halo_update is a no-op, because adj_halo_q
+!! completes the update. The C-grid winds are passive; their halos are loaded by the driver
+!! (single face: from the neighbouring faces in the file; FMS: by the FMS exchange) and
+!! mpp_get_boundary / mpp_update_domains here copy them (used only by the forward reference
+!! offline_tracer_advection).
+
+!$TAF SUBROUTINE adj_halo_q INPUT = 1, 2, 3, 4
+!$TAF SUBROUTINE adj_halo_q OUTPUT = 1
+!$TAF SUBROUTINE adj_halo_q ACTIVE = 1
+!$TAF SUBROUTINE adj_halo_q FTLNAME = adj_halo_q
+!$TAF SUBROUTINE adj_halo_q ADNAME = adj_halo_q_ad
+!$TAF SUBROUTINE adj_halo_q DEPEND = 2, 3, 4
+!$TAF SUBROUTINE adj_halo_q ADKILL = 1
+!$TAF SUBROUTINE adj_global_sum INPUT = 1, 2
+!$TAF SUBROUTINE adj_global_sum OUTPUT = 1
+!$TAF SUBROUTINE adj_global_sum ACTIVE = 1
+!$TAF SUBROUTINE adj_global_sum FTLNAME = adj_global_sum
+!$TAF SUBROUTINE adj_global_sum ADNAME = adj_global_sum
+!$TAF SUBROUTINE adj_global_sum ADKILL = 1
+!$TAF SUBROUTINE adj_reduce_max INPUT = 1, 2
+!$TAF SUBROUTINE adj_reduce_max OUTPUT = 1
 
 module platform_mod
   implicit none
@@ -72,11 +95,6 @@ end module fv_timing_mod
 module mpp_mod
   implicit none
   integer, parameter :: FATAL = 2, WARNING = 1, NOTE = 0
-  !> Mass-fixer control: adj_sum_mode = 0: mpp_sum is the identity (one face);
-  !! 1: also record the sums; 2: return the recorded sums (frozen scaling factor).
-  integer :: adj_sum_mode = 0
-  integer :: adj_sum_n = 0
-  real :: adj_sum_saved(8) = 0.
 contains
   subroutine mpp_error(level, msg)
     integer, intent(in) :: level
@@ -87,17 +105,7 @@ contains
   subroutine mpp_sum(a, n)
     integer, intent(in) :: n
     real, intent(inout) :: a(n)
-    integer :: i
-    if (adj_sum_mode == 1) then
-       adj_sum_n = n
-       do i = 1, n
-          adj_sum_saved(i) = a(i)
-       enddo
-    elseif (adj_sum_mode == 2) then
-       do i = 1, n
-          a(i) = adj_sum_saved(i)
-       enddo
-    endif
+    call adj_global_sum(a, n)
   end subroutine mpp_sum
   subroutine mpp_max(a)
     real, intent(inout) :: a
@@ -230,15 +238,9 @@ module fv_mp_mod
   implicit none
   private
   public :: ng, is_master, mp_reduce_max, mp_gather, group_halo_update_type, &
-            start_group_halo_update, complete_group_halo_update, adj_qhalo_fill, adj_qhalo
+            start_group_halo_update, complete_group_halo_update
 
   integer, parameter :: ng = 3
-
-  !> If adj_qhalo_fill, start_group_halo_update copies the q halo from adj_qhalo (passive data,
-  !! e.g. the neighbouring faces' q for a forward check against GCHP); otherwise it is a no-op.
-  !! adj_qhalo has the shape of the exchanged array (lower bounds 1, halo width ng).
-  logical, save :: adj_qhalo_fill = .false.
-  real, allocatable, save :: adj_qhalo(:,:,:,:)
 
   type group_halo_update_type
      integer :: id = 0
@@ -257,6 +259,7 @@ contains
   subroutine mp_reduce_max(a, n)
     integer, intent(in) :: n
     real, intent(inout) :: a(n)
+    call adj_reduce_max(a, n)
   end subroutine mp_reduce_max
 
   subroutine mp_gather(a, i1, i2, j1, j2, idim, jdim)
@@ -268,30 +271,14 @@ contains
     type(group_halo_update_type), intent(inout) :: pack
     real, intent(inout) :: q(:,:,:)
     type(domain2d), intent(inout) :: domain
+    call adj_halo_q(q, size(q,1), size(q,2), size(q,3))
   end subroutine start_halo_3d
 
   subroutine start_halo_4d(pack, q, domain)
     type(group_halo_update_type), intent(inout) :: pack
     real, intent(inout) :: q(:,:,:,:)
     type(domain2d), intent(inout) :: domain
-    integer :: i, j, k, l, ni, nj
-    real :: w
-    ! Written as a blend with w = 0 (halo) or 1 (interior), not as a conditional assignment: TAF
-    ! treats a conditional overwrite of elements inside loops over the whole array as a kill of q.
-    if (adj_qhalo_fill) then
-       ni = size(q, 1); nj = size(q, 2)
-       do l = 1, size(q, 4)
-          do k = 1, size(q, 3)
-             do j = 1, nj
-                do i = 1, ni
-                   w = 1.
-                   if (i <= ng .or. i > ni-ng .or. j <= ng .or. j > nj-ng) w = 0.
-                   q(i,j,k,l) = w*q(i,j,k,l) + (1.-w)*adj_qhalo(i,j,k,l)
-                enddo
-             enddo
-          enddo
-       enddo
-    endif
+    call adj_halo_q(q, size(q,1), size(q,2), size(q,3)*size(q,4))
   end subroutine start_halo_4d
 
   subroutine complete_group_halo_update(pack, domain)
