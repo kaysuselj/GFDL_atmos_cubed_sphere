@@ -55,9 +55,11 @@ module adj_face_mod
   !> diagnostics written by the top-level routines (adj_tops.F90)
   real, allocatable, save :: pleadv_out(:,:,:), dpa_out(:,:,:)
 
-  !> mass fixer in top_step: frozen factor adj_s0 (adj_freeze_s) or s(q); s(q) is saved in adj_s0
+  !> mass fixer in top_step: the frozen factor adj_s0 (if adj_freeze_s) or s(q); s(q) is written to
+  !! adj_s_last. adj_s0 is only read in the differentiated code, so it stays passive (a TL/AD copy
+  !! of an active adj_s0 would carry over between calls).
   logical, save :: adj_freeze_s = .false.
-  real, save :: adj_s0 = 1.
+  real, save :: adj_s0 = 1., adj_s_last = 1.
 
   !> level used by the single-level kernel test (fv_tp_2d)
   integer, save :: k_test = 40

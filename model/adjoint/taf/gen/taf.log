@@ -147,7 +147,7 @@ adj_tops.f90:
 
  the   dependent variable(s) are : fx,fy,qc,qh
 
-TAF WARNING toplevel routine overwrites the  input variables : adj_s0,qc[C],qh[C]
+TAF WARNING toplevel routine overwrites the  input variables : qc[C],qh[C]
 
 =========================================
  generate modules of forward mode
@@ -155,7 +155,6 @@ TAF WARNING toplevel routine overwrites the  input variables : adj_s0,qc[C],qh[C
  begin generate tangent linear module of : fv_mp_mod
  end   generate tangent linear module of : fv_mp_mod
  begin generate tangent linear module of : adj_face_mod
-       reset module variables            : adj_face_mod_constructor_tl
  end   generate tangent linear module of : adj_face_mod
  begin generate tangent linear module of : mpp_mod
  end   generate tangent linear module of : mpp_mod
@@ -244,7 +243,6 @@ TAF WARNING toplevel routine overwrites the  input variables : adj_s0,qc[C],qh[C
  begin generate adjoint module of : fv_mp_mod
  end   generate adjoint module of : fv_mp_mod
  begin generate adjoint module of : adj_face_mod
-       reset module variables     : adj_face_mod_constructor_ad
  end   generate adjoint module of : adj_face_mod
  begin generate adjoint module of : mpp_mod
  end   generate adjoint module of : mpp_mod
@@ -262,12 +260,6 @@ TAF WARNING toplevel routine overwrites the  input variables : adj_s0,qc[C],qh[C
  begin generate adjoint computations of : top_step
  begin generate adjoint computations of : mpp_sum
  end   generate adjoint computations of : mpp_sum
-TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT adj_tops.f90:200 in top_step
- extensive recomputations are required.
- The responsible variables are : adj_s0
-TAF WARNING RECOMPUTATION WARNING DOLOOP_STMT adj_tops.f90:200 in top_step
-TAF WARNING  triggered by      : adj_s0
-TAF WARNING  still to be recomputed : adj_s0
  begin generate adjoint computations of : map1_q2
 TAF RECOMPUTATION LOOP WARNING DOLOOP_STMT fv_mapz.f90:1530 in map1_q2
  extensive recomputations are required.
@@ -587,7 +579,6 @@ TAF WARNING  still to be recomputed : q[C]
 =========================================
  generate auxiliary routines
 =========================================
- generate initialization of global adjoint variables
 
 =========================================
  Fortran dialect transformations
@@ -712,7 +703,6 @@ TAF WARNING  still to be recomputed : q[C]
          subroutine ** tracer_2d_tl **
 ./adj_face_mod_ad.f90:
  writing module     ** adj_face_mod **
-         subroutine ** adj_face_mod_constructor_ad **
 ./adj_tops_ad.f90:
  writing subroutine ** top_adv_tl **
  writing subroutine ** top_adv_ad **
@@ -727,5 +717,4 @@ TAF WARNING  still to be recomputed : q[C]
  writing subroutine ** top_tracer2d_tl **
  writing subroutine ** top_tracer2d_ad **
  writing subroutine ** top_tracer2d **
- writing subroutine ** zero_ad **
 

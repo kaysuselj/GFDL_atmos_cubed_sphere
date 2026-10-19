@@ -90,7 +90,6 @@ real, intent(inout) :: qh_ad(isd:ied,jsd:jed,npz,nq)
 !==============================================
 ! declare local variables
 !==============================================
-real :: adj_s0h = 1.
 real :: qch(lbound(qc,1):ubound(qc,1),lbound(qc,2):ubound(qc,2),lbound(qc,3):ubound(qc,3),lbound(qc,4):ubound(qc,4))
 real :: qhh(lbound(qh,1):ubound(qh,1),lbound(qh,2):ubound(qh,2),lbound(qh,3):ubound(qh,3),lbound(qh,4):ubound(qh,4))
 real :: qhi(lbound(qh,1):ubound(qh,1),lbound(qh,2):ubound(qh,2),lbound(qh,3):ubound(qh,3),lbound(qh,4):ubound(qh,4))
@@ -100,12 +99,6 @@ real :: qhi(lbound(qh,1):ubound(qh,1),lbound(qh,2):ubound(qh,2),lbound(qh,3):ubo
 !----------------------------------------------
 qhi(:,:,:,:) = qh
 qch(:,:,:,:) = qc
-adj_s0h = adj_s0
-
-!----------------------------------------------
-! RESET GLOBAL ADJOINT VARIABLES
-!----------------------------------------------
-call zero_ad
 
 !----------------------------------------------
 ! FUNCTION AND TAPE COMPUTATIONS
@@ -126,7 +119,6 @@ qhh(:,:,:,:) = qh
 !----------------------------------------------
 ! ADJOINT COMPUTATIONS
 !----------------------------------------------
-adj_s0 = adj_s0h
 qc = qch(:,:,:,:)
 qh = qhi(:,:,:,:)
 if (mode == 1) then
@@ -324,7 +316,7 @@ do iq = 1, nq
 end do
 do iq = 1, nq
   if (adj_freeze_s) then
-    scalingfactor_tl = adj_s0_tl
+    scalingfactor_tl = 0.
     scalingfactor = adj_s0
   else
     partialsums_tl = 0.
@@ -359,8 +351,6 @@ do iq = 1, nq
       scalingfactor_tl = 0.
       scalingfactor = 1.d0
     endif
-    adj_s0_tl = scalingfactor_tl
-    adj_s0 = scalingfactor
   endif
   q_tl(is:ie,js:je,1:kstart-1,iq) = q3_tl(is:ie,js:je,1:kstart-1,iq)
   q(is:ie,js:je,1:kstart-1,iq) = q3(is:ie,js:je,1:kstart-1,iq)
@@ -402,7 +392,6 @@ real, intent(inout) :: q_ad(is:ie,js:je,npz,nq)
 !==============================================
 ! declare local variables
 !==============================================
-real :: adj_s0h = 1.
 real :: cxl(is:ie+1,jsd:jed,npz)
 real :: cyl(isd:ied,js:je+1,npz)
 real :: dp2(is:ie,js:je,npz)
@@ -413,7 +402,6 @@ real :: globalsums(3)
 real :: globalsums_ad(3)
 integer :: iq
 integer :: iq1
-integer :: iq2
 integer :: j
 integer :: j1
 integer :: k
@@ -439,11 +427,6 @@ real, allocatable :: tempsumh_ad(:,:)
 !==============================================
 ! generic interfaces
 !==============================================
-
-!----------------------------------------------
-! SAVE REQUIRED INPUT VARIABLES
-!----------------------------------------------
-adj_s0h = adj_s0
 
 !----------------------------------------------
 ! RESET LOCAL ADJOINT VARIABLES NO ALLOC
@@ -495,33 +478,6 @@ do iq = 1, nq
   end do
 end do
 do iq = nq, 1, -1
-  adj_s0 = adj_s0h
-  do iq1 = 1, iq-1
-    if (adj_freeze_s) then
-    else
-      partialsums = 0.0d0
-      do k = 1, npz
-        partialsums(1,k) = sum(q3(is:ie,js:je,k,iq1)*dp2(:,:,k)*gridstruct%area(is:ie,js:je))
-        tempsum = sum(q3(is:ie,js:je,k,iq1)*(ple1(:,:,k+1)-ple1(:,:,k))*gridstruct%area(is:ie,js:je))
-        partialsums(2,k) = tempsum
-        if (k < kstart) then
-          partialsums(3,k) = tempsum
-        endif
-      end do
-      globalsums(1) = sum(partialsums(1,:))
-      globalsums(2) = sum(partialsums(2,:))
-      globalsums(3) = sum(partialsums(3,:))
-      call mpp_sum( globalsums,3 )
-      globalsums(1) = globalsums(1)-globalsums(3)
-      globalsums(2) = globalsums(2)-globalsums(3)
-      if (globalsums(2) > tiny_denominator) then
-        scalingfactor = globalsums(1)/globalsums(2)
-      else
-        scalingfactor = 1.d0
-      endif
-      adj_s0 = scalingfactor
-    endif
-  end do
 !$taf INCOMPLETE globalsums
   if (adj_freeze_s) then
     scalingfactor = adj_s0
@@ -553,11 +509,8 @@ do iq = nq, 1, -1
   q3_ad(is:ie,js:je,1:kstart-1,iq) = q3_ad(is:ie,js:je,1:kstart-1,iq)+q_ad(is:ie,js:je,1:kstart-1,iq)
   q_ad(is:ie,js:je,1:kstart-1,iq) = 0.
   if (adj_freeze_s) then
-    adj_s0_ad = adj_s0_ad+scalingfactor_ad
     scalingfactor_ad = 0.
   else
-    scalingfactor_ad = scalingfactor_ad+adj_s0_ad
-    adj_s0_ad = 0.
     if (globalsums(2) > tiny_denominator) then
       globalsums_ad(2) = globalsums_ad(2)-scalingfactor_ad*(globalsums(1)/globalsums(2)/globalsums(2))
       globalsums_ad(1) = globalsums_ad(1)+scalingfactor_ad/globalsums(2)
@@ -613,7 +566,7 @@ do iq = nq, 1, -1
   q3(is:ie,js:je,:,:) = q(is:ie,js:je,:,:)
   call start_group_halo_update( q_pack,q3,domain )
   call tracer_2d( q3,dpl,mfxl,mfyl,cxl,cyl,gridstruct,bd,domain,npx,npy,npz,nq,flagstruct%hord_tr,flagstruct%q_split,dt,0,q_pack,flagstruct%nord_tr,flagstruct%trdm2,flagstruct%lim_fac,dpa=dpa )
-  do iq2 = 1, iq-1
+  do iq1 = 1, iq-1
     do j = js, je
       pe1(:,1) = ptop
       do k = 2, npz+1
@@ -627,8 +580,8 @@ do iq = nq, 1, -1
       do k = 1, npz
         dp2(:,j,k) = pe2(:,k+1)-pe2(:,k)
       end do
-      call map1_q2( npz,pe1,q3(isd,jsd,1,iq2),npz,pe2,q1(:,j,:),dp2(:,j,:),is,ie,0,flagstruct%kord_tr,j,isd,ied,jsd,jed,0. )
-      q3(is:ie,j,1:npz,iq2) = q1(:,j,:)
+      call map1_q2( npz,pe1,q3(isd,jsd,1,iq1),npz,pe2,q1(:,j,:),dp2(:,j,:),is,ie,0,flagstruct%kord_tr,j,isd,ied,jsd,jed,0. )
+      q3(is:ie,j,1:npz,iq1) = q1(:,j,:)
     end do
   end do
   q3h(:,:,:,:) = q3
@@ -683,10 +636,6 @@ q_ad(is:ie,js:je,:,:) = q_ad(is:ie,js:je,:,:)+q3_ad(is:ie,js:je,:,:)
 q3_ad(is:ie,js:je,:,:) = 0.
 deallocate( partialsumsh_ad )
 deallocate( tempsumh_ad )
-
-!----------------------------------------------
-! FREE DYNAMIC MEMORY
-!----------------------------------------------
 
 end subroutine top_step_ad
 
@@ -810,7 +759,7 @@ do iq = 1, nq
     else
       scalingfactor = 1.d0
     endif
-    adj_s0 = scalingfactor
+    adj_s_last = scalingfactor
   endif
   q(is:ie,js:je,1:kstart-1,iq) = q3(is:ie,js:je,1:kstart-1,iq)
   q(is:ie,js:je,kstart:npz,iq) = q3(is:ie,js:je,kstart:npz,iq)*scalingfactor
@@ -1166,25 +1115,3 @@ cxl = cx_e
 cyl = cy_e
 call tracer_2d( q,dp1,mfxl,mfyl,cxl,cyl,gridstruct,bd,domain,npx,npy,npz,nq,flagstruct%hord_tr,flagstruct%q_split,dt,0,q_pack,flagstruct%nord_tr,flagstruct%trdm2,flagstruct%lim_fac,dpa=dpa_out )
 end subroutine top_tracer2d
-
-subroutine zero_ad()
-!******************************************************************
-!******************************************************************
-!** This routine was generated by Automatic differentiation.     **
-!** FastOpt: Transformation of Algorithm in Fortran, TAF 6.8.11  **
-!******************************************************************
-!******************************************************************
-!==============================================
-! referencing used modules
-!==============================================
-use adj_face_mod
-
-implicit none
-
-
-!----------------------------------------------
-! reset adjoint module variables
-!----------------------------------------------
-call adj_face_mod_constructor_ad
-
-end subroutine zero_ad

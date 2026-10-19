@@ -83,6 +83,7 @@ program test_adv
   ! full step: first a forward with s(q) to store s0, then frozen s0 (linear) and full s(q)
   adj_freeze_s = .false.
   call fwd_dump()
+  adj_s0 = adj_s_last
   if (root) write(*,'(a,es24.16)') 'mass-fixer factor s0 =', adj_s0
   adj_freeze_s = .true.
   call test_mode(3, 'full step, frozen s0')

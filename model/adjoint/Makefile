@@ -35,7 +35,7 @@ GENM_O  = $(patsubst %,$(BM)/taf/%_ad.o,$(GEN))
 COMM_O  = $(BM)/comm/fv_arrays_fms.o $(BM)/comm/fv_mp_mod.o $(BM)/comm/adj_comm_fms.o
 
 all: $(B)/test_fwd $(BA)/test_adv
-mpi: $(BM)/test_adv $(BM)/test_halo
+mpi: $(BM)/test_adv $(BM)/test_halo $(BM)/test_chain
 
 # ---------------------------------------------------------------- build: original forward, one face
 $(B):
@@ -94,6 +94,10 @@ $(BM)/taf/adj_load.o: driver/adj_load.F90 $(GENM_O) $(COMM_O)
 $(BM)/taf/test_adv.o: driver/test_adv.F90 $(BM)/taf/adj_load.o
 	$(MPIFC) $(FFLAGS) $(RENAME) -I$(BM)/comm -J$(BM)/taf -c $< -o $@
 $(BM)/test_adv: $(GENM_O) $(BM)/taf/adj_load.o $(BM)/taf/test_adv.o $(COMM_O)
+	$(MPIFC) $(FFLAGS) -o $@ $^ $(FMSB)/libfms.a $(NETCDF)
+$(BM)/taf/test_chain.o: driver/test_chain.F90 $(BM)/taf/adj_load.o
+	$(MPIFC) $(FFLAGS) $(RENAME) -I$(BM)/comm -J$(BM)/taf -c $< -o $@
+$(BM)/test_chain: $(GENM_O) $(BM)/taf/adj_load.o $(BM)/taf/test_chain.o $(COMM_O)
 	$(MPIFC) $(FFLAGS) -o $@ $^ $(FMSB)/libfms.a $(NETCDF)
 $(BM)/comm/test_halo.o: driver/test_halo.F90 $(COMM_O)
 	$(MPIFC) $(FFLAGS) -I$(BM)/comm -J$(BM)/comm -c $< -o $@

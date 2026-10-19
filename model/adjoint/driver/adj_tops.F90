@@ -126,8 +126,8 @@ end subroutine top_offline
 !! from code generation, and bit-identical for hord 2 / kord 17). Differences in form only:
 !!  - the C-grid wind halos are taken from adj_face_mod directly (the values that the
 !!    mpp_get_boundary / mpp_update_domains calls deliver); they are passive;
-!!  - the mass-fixer factor is s(q) (adj_freeze_s = .false.) or the stored s0 (adj_freeze_s = .true.,
-!!    s0 = adj_s0 from an earlier forward call with adj_freeze_s = .false.).
+!!  - the mass-fixer factor is s(q) (adj_freeze_s = .false.; written to adj_s_last) or the given s0
+!!    (adj_freeze_s = .true., s0 = adj_s0, e.g. adj_s_last of a forward call at the trajectory).
 !! TAF cannot differentiate offline_tracer_advection itself in reverse mode (reuse of the xL/yL
 !! buffers for CX and MFX, and the GOTOs in the unused mapn_tracer path).
 subroutine top_step(q)
@@ -220,7 +220,7 @@ subroutine top_step(q)
         else
            scalingfactor = 1.d0
         end if
-        adj_s0 = scalingfactor
+        adj_s_last = scalingfactor
      endif
      q(is:ie, js:je, 1:(kstart-1), iq) = q3(is:ie, js:je, 1:(kstart-1), iq)
      q(is:ie, js:je, kstart:npz, iq) = q3(is:ie, js:je, kstart:npz, iq) * scalingfactor

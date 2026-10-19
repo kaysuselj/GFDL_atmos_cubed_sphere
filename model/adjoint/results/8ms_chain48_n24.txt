@@ -1,0 +1,26 @@
+C-grid halo CX/CY: FMS exchange vs file, max rel. diff =  0.00E+00
+C-grid halo MFX/MFY: FMS exchange vs file, max rel. diff =  0.00E+00
+q halo: FMS exchange vs neighbouring faces in the file, max |diff| =  0.00E+00
+chain ../8ms_chain, steps 48, hord_tr kord_tr   2  17
+receptors:  6, level k = 52
+mass-fixer factor s0: min, max over the steps  9.9999999969559705E-01  9.9999999999543798E-01
+
+=== mass fixer frozen (s0 per step): linear operator
+receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              <TL x, e_r>          adj/FD - 1   adj vs TL
+westofseam       3  12  22  52 -3.1901551599188444E-01 -3.1901551599194439E-01 -3.1901551599194417E-01    1.88E-13    6.96E-16
+onseam           4  12   1  52  6.9247481736192273E-01  6.9247481736195360E-01  6.9247481736195382E-01    4.46E-14    3.21E-16
+eastofseam       4  12   3  52 -3.8241825880104047E-01 -3.8241825880098501E-01 -3.8241825880098557E-01   -1.45E-13    1.45E-15
+corner_west      3   2  21  52 -4.8899289745936336E-01 -4.8899289745939473E-01 -4.8899289745939423E-01    6.42E-14    1.02E-15
+corner_on        4   1   1  52 -3.2009574654239946E-02 -3.2009574654194496E-02 -3.2009574654194378E-02   -1.42E-12    3.69E-15
+corner_east      4   2   4  52 -1.7137729273408309E-01 -1.7137729273417715E-01 -1.7137729273417715E-01    5.49E-13    0.00E+00
+
+=== mass fixer s(q), linearized around the base trajectory
+receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              <TL x, e_r>          adj/FD - 1   adj vs TL
+westofseam       3  12  22  52 -3.1900683486628623E-01 -3.1900683486629622E-01 -3.1900683486629633E-01    3.13E-14    3.48E-16
+onseam           4  12   1  52  6.9248349848314894E-01  6.9248349848317448E-01  6.9248349848317559E-01    3.69E-14    1.60E-15
+eastofseam       4  12   3  52 -3.8240957768245515E-01 -3.8240957768240491E-01 -3.8240957768240469E-01   -1.31E-13    5.81E-16
+corner_west      3   2  21  52 -4.8898421633714023E-01 -4.8898421633702904E-01 -4.8898421633702926E-01   -2.27E-13    4.54E-16
+corner_on        4   1   1  52 -3.2000893559495792E-02 -3.2000893559501406E-02 -3.2000893559501552E-02    1.75E-13    4.55E-15
+corner_east      4   2   4  52 -1.7136861162770467E-01 -1.7136861162768613E-01 -1.7136861162768668E-01   -1.08E-13    3.24E-15
+
+ALL TESTS PASSED (adjoint = transpose of the TL to 1e-12 for every receptor)

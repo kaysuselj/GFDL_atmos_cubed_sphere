@@ -32,7 +32,7 @@ program test_fwd
   pleadv_ref = pleadv_out
   adj_freeze_s = .false.
   call top_step(q2)
-  s_face = adj_s0
+  s_face = adj_s_last
   write(*,'(a,2es10.2,l3)') 'top_step vs offline_tracer_advection: max|dq|, max|dpleadv|, bit-identical:', &
        maxval(abs(q2-q)), maxval(abs(pleadv_out-pleadv_ref)), all(q2 == q) .and. all(pleadv_out == pleadv_ref)
   write(*,'(a,2i4)') 'hord_tr, kord_tr =', flagstruct%hord_tr, flagstruct%kord_tr

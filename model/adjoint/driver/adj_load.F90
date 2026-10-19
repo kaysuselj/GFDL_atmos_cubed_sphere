@@ -39,6 +39,7 @@ module adj_load_mod
 
   integer, parameter :: nf = npx - 1           !< cells per face edge
   integer, parameter :: fsd = 1 - ng, fed = nf + ng
+  logical, save :: verbose = .true.
 
 contains
 
@@ -61,13 +62,18 @@ contains
     close(u)
   end subroutine read_r8
 
-  subroutine load_step(dir)
+  !> load one step; a second call replaces the step (the halo checks are printed unless quiet)
+  subroutine load_step(dir, quiet)
     character(len=*), intent(in) :: dir
+    logical, intent(in), optional :: quiet
     character(len=512) :: fd
     real, allocatable :: g2(:,:), g3(:,:,:)
     real :: wx(1:nf+1, fsd:fed, npz), wy(fsd:fed, 1:nf+1, npz)
     real :: d
 
+    verbose = .true.
+    if (present(quiet)) verbose = .not. quiet
+    if (allocated(gridstruct%area)) call free_step()
     if (multiface) then
        call backend_bounds(is, ie, js, je, tile)
        write(fd, '(a,a,i0)') trim(dir), '/f', tile
@@ -137,7 +143,8 @@ contains
        call adj_halo_q(q_in, ied-isd+1, jed-jsd+1, npz)
        d = maxval(abs(q_in - g3(isd:ied, jsd:jed, :)), mask=spread(face_mask(), 3, npz))
        d = backend_allmax(d)
-       if (backend_rank() == 0) write(*,'(a,es10.2)') 'q halo: FMS exchange vs neighbouring faces in the file, max |diff| =', d
+       if (backend_rank() == 0 .and. verbose) &
+            write(*,'(a,es10.2)') 'q halo: FMS exchange vs neighbouring faces in the file, max |diff| =', d
     endif
     deallocate(g3)
     allocate(g3(1:nf, 1:nf, npz))
@@ -149,6 +156,13 @@ contains
     allocate(pleadv_out(is:ie, js:je, npz+1), dpa_out(is:ie, js:je, npz))
   end subroutine load_step
 
+  subroutine free_step()
+    deallocate(gridstruct%area, gridstruct%rarea, gridstruct%dxa, gridstruct%dya, gridstruct%dx, gridstruct%dy)
+    deallocate(gridstruct%rdxc, gridstruct%rdyc, gridstruct%del6_u, gridstruct%del6_v, gridstruct%cosa_s)
+    deallocate(gridstruct%rsin2, gridstruct%sin_sg, gridstruct%area_64)
+    deallocate(cx_e, cy_e, mfx_e, mfy_e, ple0, ple1, pleadv_gchp, q_in, q_out_gchp, pleadv_out, dpa_out)
+  end subroutine free_step
+
   !> fill the halo of a C-grid pair from its interior by the FMS calls of offline_tracer_advection,
   !! and report the largest difference to the halo values in the file (prep's geometric rotation)
   subroutine cgrid_from_fms(x, y, name)
@@ -159,7 +173,8 @@ contains
     call backend_cgrid_halo(x(is:ie, js:je, :), y(is:ie, js:je, :), x, y)
     d = max(maxval(abs(x - xf)), maxval(abs(y - yf))) / max(maxval(abs(xf)), maxval(abs(yf)), tiny(1.))
     d = backend_allmax(d)
-    if (backend_rank() == 0) write(*,'(3a,es10.2)') 'C-grid halo ', name, ': FMS exchange vs file, max rel. diff =', d
+    if (backend_rank() == 0 .and. verbose) &
+         write(*,'(3a,es10.2)') 'C-grid halo ', name, ': FMS exchange vs file, max rel. diff =', d
   end subroutine cgrid_from_fms
 
   !> .true. on the compute domain
