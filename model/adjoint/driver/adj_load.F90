@@ -37,8 +37,8 @@ module adj_load_mod
   private
   public :: load_step, read_r8, dump_field
 
-  integer, parameter :: nf = npx - 1           !< cells per face edge
-  integer, parameter :: fsd = 1 - ng, fed = nf + ng
+  integer, save :: nf = 24                     !< cells per face edge (C24)
+  integer, save :: fsd, fed
   logical, save :: verbose = .true.
 
 contains
@@ -68,12 +68,15 @@ contains
     logical, intent(in), optional :: quiet
     character(len=512) :: fd
     real, allocatable :: g2(:,:), g3(:,:,:)
-    real :: wx(1:nf+1, fsd:fed, npz), wy(fsd:fed, 1:nf+1, npz)
+    real, allocatable :: wx(:,:,:), wy(:,:,:)
     real :: d
 
     verbose = .true.
     if (present(quiet)) verbose = .not. quiet
     if (allocated(gridstruct%area)) call free_step()
+    ! the prep files are C24 with 72 levels (prep/make_face_inputs.py)
+    npx = nf + 1; npy = nf + 1; npz = 72
+    fsd = 1 - ng; fed = nf + ng
     if (multiface) then
        call backend_bounds(is, ie, js, je, tile)
        write(fd, '(a,a,i0)') trim(dir), '/f', tile
@@ -116,12 +119,14 @@ contains
     gridstruct%cosa_s = 0.; gridstruct%rsin2 = 1.
     gridstruct%da_min = minval(gridstruct%area(is:ie,js:je))
 
+    allocate(wx(1:nf+1, fsd:fed, npz), wy(fsd:fed, 1:nf+1, npz))
     allocate(cx_e(is:ie+1,jsd:jed,npz), mfx_e(is:ie+1,jsd:jed,npz))
     allocate(cy_e(isd:ied,js:je+1,npz), mfy_e(isd:ied,js:je+1,npz))
     call read_r8(trim(fd)//'/cx.r8',  wx, size(wx)); cx_e  = wx(is:ie+1, jsd:jed, :)
     call read_r8(trim(fd)//'/mfx.r8', wx, size(wx)); mfx_e = wx(is:ie+1, jsd:jed, :)
     call read_r8(trim(fd)//'/cy.r8',  wy, size(wy)); cy_e  = wy(isd:ied, js:je+1, :)
     call read_r8(trim(fd)//'/mfy.r8', wy, size(wy)); mfy_e = wy(isd:ied, js:je+1, :)
+    deallocate(wx, wy)
     if (multiface) then
        ! halos from the FMS exchange (only the interior west/south values are used as input)
        call cgrid_from_fms(cx_e, cy_e, 'CX/CY')
@@ -150,6 +155,7 @@ contains
     allocate(g3(1:nf, 1:nf, npz))
     call read_r8(trim(fd)//'/q_out_gchp.r8', g3, size(g3)); q_out_gchp = g3(is:ie, js:je, :)
     deallocate(g3)
+    allocate(ak(npz+1), bk(npz+1))
     call read_r8(trim(fd)//'/ak.r8', ak, npz+1)
     call read_r8(trim(fd)//'/bk.r8', bk, npz+1)
     ptop = ak(1)
@@ -160,7 +166,7 @@ contains
     deallocate(gridstruct%area, gridstruct%rarea, gridstruct%dxa, gridstruct%dya, gridstruct%dx, gridstruct%dy)
     deallocate(gridstruct%rdxc, gridstruct%rdyc, gridstruct%del6_u, gridstruct%del6_v, gridstruct%cosa_s)
     deallocate(gridstruct%rsin2, gridstruct%sin_sg, gridstruct%area_64)
-    deallocate(cx_e, cy_e, mfx_e, mfy_e, ple0, ple1, pleadv_gchp, q_in, q_out_gchp, pleadv_out, dpa_out)
+    deallocate(cx_e, cy_e, mfx_e, mfy_e, ple0, ple1, pleadv_gchp, q_in, q_out_gchp, pleadv_out, dpa_out, ak, bk)
   end subroutine free_step
 
   !> fill the halo of a C-grid pair from its interior by the FMS calls of offline_tracer_advection,

@@ -26,25 +26,32 @@
 !! sum is mpp_sum (self-adjoint), the global max fv_mp_mod's mp_reduce_max, and the C-grid wind
 !! halos come from the mpp_get_boundary / mpp_update_domains calls of offline_tracer_advection.
 !! See stubs/stubs.F90 for the TAF directives of the external routines.
+!! Standalone: backend_init builds the domain (domain_decomp). In GCHP: backend_attach points the
+!! back-end at GCHP's own domain (FV_Atm(1)%domain) and bounds; fms_init etc. are done by GCHP.
 module adj_backend_mod
   use mpp_mod,         only: mpp_pe, mpp_npes, mpp_sum, mpp_max, mpp_set_current_pelist, mpp_get_current_pelist
-  use mpp_domains_mod, only: mpp_get_boundary, mpp_update_domains, mpp_update_domains_ad, CGRID_NE
+  use mpp_domains_mod, only: domain2d, mpp_get_boundary, mpp_update_domains, mpp_update_domains_ad, CGRID_NE
   use fms_mod,         only: fms_init
   use fv_mp_mod,       only: mp_start, mp_assign_gid, domain_decomp, group_halo_update_type, &
                              start_group_halo_update, complete_group_halo_update
   use fv_arrays_mod,   only: fv_atmos_type
   implicit none
   private
-  public :: multiface, qhalo_fill, qhalo, backend_init, backend_finalize, backend_rank, &
+  public :: multiface, qhalo_fill, qhalo, backend_init, backend_attach, backend_finalize, backend_rank, &
             backend_nranks, backend_bounds, backend_cgrid_halo, backend_allsum, backend_allmax
-  public :: halo_q, halo_q_ad, global_sum, reduce_max
+  public :: halo_q, halo_q_ad, global_sum, reduce_max, Atm
 
   logical, parameter :: multiface = .true.
   logical, save :: qhalo_fill = .false.              !< not used on six faces (real exchange)
   real, allocatable, save :: qhalo(:,:,:)
 
-  integer, parameter :: npx = 25, npy = 25
-  type(fv_atmos_type), target, save :: Atm
+  integer, parameter :: npx = 25, npy = 25             !< standalone (C24) only
+  type(fv_atmos_type), target, save :: Atm               !< standalone only (public for test programs)
+  !> the domain and this rank's subdomain that the back-end works on
+  type(domain2d), target, save :: dom_copy
+  type(domain2d), pointer, save :: dom => null()
+  integer, save :: bis, bie, bjs, bje, bisd, bied, bjsd, bjed, btile
+  integer, parameter :: ng = 3
   type(group_halo_update_type), save :: q_group
   integer, save :: q_group_nk = -1
 
@@ -69,7 +76,22 @@ contains
        error stop
     endif
     call domain_decomp(npx, npy, nregions, 0, .false., Atm, lay, io_layout)
+    call backend_attach(Atm%domain, Atm%bd%is, Atm%bd%ie, Atm%bd%js, Atm%bd%je, Atm%tile)
   end subroutine backend_init
+
+  !> use an existing cubed-sphere domain (GCHP: FV_Atm(1)%domain) and this rank's compute domain
+  !! (halo width 3, as FV3's ng). The domain is copied: FMS domain2d copies are shallow and share
+  !! the communication setup (FV3 does the same for domain_for_coupler); GCHP's FV_Atm is not a
+  !! target, so no pointer to it is kept.
+  subroutine backend_attach(domain, is, ie, js, je, tile)
+    type(domain2d), intent(in) :: domain
+    integer, intent(in) :: is, ie, js, je, tile
+    dom_copy = domain
+    dom => dom_copy
+    bis = is; bie = ie; bjs = js; bje = je; btile = tile
+    bisd = is - ng; bied = ie + ng; bjsd = js - ng; bjed = je + ng
+    q_group_nk = -1
+  end subroutine backend_attach
 
   !> End of the test programs: barrier, then exit. fms_end and MPI_Finalize both hang in this
   !! standalone setting after repeated loads (MPICH 5.0.1, leftover FMS requests); all output is
@@ -92,7 +114,7 @@ contains
 
   subroutine backend_bounds(is, ie, js, je, tile)
     integer, intent(out) :: is, ie, js, je, tile
-    is = Atm%bd%is; ie = Atm%bd%ie; js = Atm%bd%js; je = Atm%bd%je; tile = Atm%tile
+    is = bis; ie = bie; js = bjs; je = bje; tile = btile
   end subroutine backend_bounds
 
   !> C-grid halo of an (x, y) pair from the interior, as offline_tracer_advection does it:
@@ -102,19 +124,19 @@ contains
     real, intent(inout) :: xe(:,:,:), ye(:,:,:)
     integer :: is, ie, js, je, isd, ied, jsd, jed, nk
     real, allocatable :: xl(:,:,:), yl(:,:,:), wb(:,:), eb(:,:), sb(:,:), nb(:,:)
-    is = Atm%bd%is; ie = Atm%bd%ie; js = Atm%bd%js; je = Atm%bd%je
-    isd = Atm%bd%isd; ied = Atm%bd%ied; jsd = Atm%bd%jsd; jed = Atm%bd%jed
+    is = bis; ie = bie; js = bjs; je = bje
+    isd = bisd; ied = bied; jsd = bjsd; jed = bjed
     nk = size(xi, 3)
     allocate(xl(isd:ied+1, jsd:jed, nk), yl(isd:ied, jsd:jed+1, nk))
     allocate(wb(js:je, nk), eb(js:je, nk), sb(is:ie, nk), nb(is:ie, nk))
     xl = 0.; yl = 0.
     xl(is:ie, js:je, :) = xi
     yl(is:ie, js:je, :) = yi
-    call mpp_get_boundary(xl, yl, Atm%domain, wbufferx=wb, ebufferx=eb, sbuffery=sb, nbuffery=nb, &
+    call mpp_get_boundary(xl, yl, dom, wbufferx=wb, ebufferx=eb, sbuffery=sb, nbuffery=nb, &
                           gridtype=CGRID_NE)
     xl(ie+1, js:je, :) = eb
     yl(is:ie, je+1, :) = nb
-    call mpp_update_domains(xl, yl, Atm%domain, gridtype=CGRID_NE, complete=.true.)
+    call mpp_update_domains(xl, yl, dom, gridtype=CGRID_NE, complete=.true.)
     xe = xl(is:ie+1, jsd:jed, :)
     ye = yl(isd:ied, js:je+1, :)
   end subroutine backend_cgrid_halo
@@ -140,14 +162,14 @@ contains
     real, intent(inout) :: q(:,:,:)
     if (q_group_nk /= -1 .and. q_group_nk /= size(q, 3)) error stop 'halo_q: one group per field shape'
     q_group_nk = size(q, 3)
-    call start_group_halo_update(q_group, q, Atm%domain)
-    call complete_group_halo_update(q_group, Atm%domain)
+    call start_group_halo_update(q_group, q, dom)
+    call complete_group_halo_update(q_group, dom)
   end subroutine halo_q
 
   !> adjoint of halo_q
   subroutine halo_q_ad(q_ad)
     real, intent(inout) :: q_ad(:,:,:)
-    call mpp_update_domains_ad(q_ad, Atm%domain)
+    call mpp_update_domains_ad(q_ad, dom)
   end subroutine halo_q_ad
 
   subroutine global_sum(a, n)

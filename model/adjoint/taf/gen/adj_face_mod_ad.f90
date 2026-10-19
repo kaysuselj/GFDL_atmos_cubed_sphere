@@ -39,10 +39,6 @@ implicit none
 !==============================================
 ! declare parameters
 !==============================================
-real, parameter :: dt = 1800.
-integer, parameter :: npx = 25
-integer, parameter :: npy = 25
-integer, parameter :: npz = 72
 integer, parameter :: nq = 1
 
 !==============================================
@@ -51,11 +47,12 @@ integer, parameter :: nq = 1
 logical :: adj_freeze_s =  .false. 
 real :: adj_s0 = 1.
 real :: adj_s_last = 1.
-real :: ak(npz+1)
-real :: bk(npz+1)
+real, allocatable :: ak(:)
+real, allocatable :: bk(:)
 real, allocatable :: cx_e(:,:,:)
 real, allocatable :: cy_e(:,:,:)
 real, allocatable :: dpa_out(:,:,:)
+real :: dt = 1800.
 integer :: ie
 integer :: ied
 integer :: is
@@ -67,6 +64,9 @@ integer :: jsd
 integer :: k_test = 40
 real, allocatable :: mfx_e(:,:,:)
 real, allocatable :: mfy_e(:,:,:)
+integer :: npx = 25
+integer :: npy = 25
+integer :: npz = 72
 real, allocatable :: ple0(:,:,:)
 real, allocatable :: ple1(:,:,:)
 real, allocatable :: pleadv_gchp(:,:,:)

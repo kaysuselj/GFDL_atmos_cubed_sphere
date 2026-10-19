@@ -6,7 +6,8 @@ CMakeLists.txt needs the GEOS ESMA build macros, so it is not used here.
 
 usage: build_fms.py <FMS source dir> <build dir> [root modules ...]
 Writes <build dir>/libfms.a and the .mod files. Default roots: what fv_mp_mod and the adjoint
-driver use (fms_mod, fms_io_mod, mpp_mod, mpp_domains_mod, mpp_parameter_mod, ensemble_manager_mod).
+driver use (fms_mod, fms_io_mod, mpp_mod, mpp_domains_mod, mpp_parameter_mod, ensemble_manager_mod),
+and what the real fv_arrays.F90 needs (time_manager_mod, horiz_interp_type_mod; the GCHP-like build).
 """
 import os, re, subprocess, sys
 
@@ -25,7 +26,7 @@ def nf_flags():
 def main():
     src, bld = os.path.abspath(sys.argv[1]), os.path.abspath(sys.argv[2])
     roots = sys.argv[3:] or ['fms_mod', 'fms_io_mod', 'mpp_mod', 'mpp_domains_mod', 'mpp_parameter_mod',
-                             'ensemble_manager_mod']
+                             'ensemble_manager_mod', 'time_manager_mod', 'horiz_interp_type_mod']
     os.makedirs(bld, exist_ok=True)
     incs = ['-I' + os.path.join(src, d) for d in ('include', 'mpp/include', 'fms', 'fft', 'mpp')] + nf_flags()
     files = []

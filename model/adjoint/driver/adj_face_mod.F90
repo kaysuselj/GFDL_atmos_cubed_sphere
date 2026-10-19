@@ -33,8 +33,10 @@ module adj_face_mod
   implicit none
   public
 
-  integer, parameter :: npx = 25, npy = 25, npz = 72, nq = 1
-  real, parameter :: dt = 1800.
+  !> grid size and time step: set by adj_load_mod (standalone) or adv_adj_discrete_mod (GCHP)
+  integer, save :: npx = 25, npy = 25, npz = 72
+  integer, parameter :: nq = 1
+  real, save :: dt = 1800.
 
   integer, save :: is, ie, js, je, isd, ied, jsd, jed, tile
 
@@ -50,7 +52,8 @@ module adj_face_mod
   !> q before the step with halo (single face: halo from the neighbouring faces in the file;
   !! FMS: filled by the halo exchange), and GCHP's q after the step (check value)
   real, allocatable, save :: q_in(:,:,:), q_out_gchp(:,:,:)
-  real, save :: ak(npz+1), bk(npz+1), ptop
+  real, allocatable, save :: ak(:), bk(:)
+  real, save :: ptop
 
   !> diagnostics written by the top-level routines (adj_tops.F90)
   real, allocatable, save :: pleadv_out(:,:,:), dpa_out(:,:,:)

@@ -174,10 +174,11 @@ contains
     character(len=12) :: ptname(npt)
     character(len=32) :: tag
     real, parameter :: tol_dot = 1.e-12
-    integer, parameter :: nf = npx - 1
+    integer :: nf
 
     if (root) write(*,*)
     if (root) write(*,'(a,i2,2a)') '=== mode ', mode, ': ', title
+    nf = npx - 1
     kk = k_test
     ! point seeds (tile, i, j, k); on one face the tile is 1
     pts(:,1) = (/ 1, 1, 1, kk /);         ptname(1) = 'SW corner'

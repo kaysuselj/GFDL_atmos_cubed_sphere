@@ -6,7 +6,8 @@
 # taf/map1_q2_structured.F90 (see there), and ppm_limiters gets explicit dummy lengths (itot) in
 # place of the assumed-size dm(*), a4(4,*) (same code otherwise); the copy is kept as taf/gen/fv_mapz_tafinput.f90 so that
 # its forward can be checked against the original (test_fwd and test_adv write step_*.r8).
-# Output: taf/gen/*_ad.f90 (modules with the original, TL and AD routines), taf/gen/taf.log.
+# Output: taf/gen/*_ad.f90 (modules with the original, TL and AD routines), taf/gen/taf.log, and
+# taf/gen_gchp/*_ad_gchp.F90 (the same with renamed modules, for GCHP; tools/make_gen_gchp.py).
 set -euo pipefail
 STAF=${STAF:-/Users/ksuselj/TAF/staf}
 D=$(cd "$(dirname "$0")" && pwd); A=$(dirname "$D"); M=$(dirname "$A")
@@ -54,5 +55,7 @@ for c in "call adj_halo_q( q,help_h,help_i,help_j )" "call adj_halo_q_ad( q,q_ad
          "call adj_halo_q( q_tl,help_h,help_i,help_j )" "call adj_global_sum( a_ad,n )" "call adj_global_sum( a_tl,n )"; do
     grep -qF "$c" "$G/stubs_ad.f90" || { echo "generated black-box call changed, expected: $c"; exit 1; }
 done
+# the copies with renamed modules that GCHP compiles (taf/gen_gchp)
+python3 -I "$A/tools/make_gen_gchp.py" "$G" "$D/gen_gchp"
 echo "TAF output in $G:"; wc -l "$G"/*_ad.f90 | tail -1
 grep -ihE "^ *subroutine [a-z0-9_]*_(tl|ad) *\(" "$G"/*_ad.f90 | sed 's/(.*//' | sort -u | tr -s ' ' | tr '\n' ' '; echo

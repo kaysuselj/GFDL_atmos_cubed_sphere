@@ -27,7 +27,13 @@ Two builds of the same generated code: one face on one process (no MPI), and the
 | `taf/run_taf.sh` | regenerates `taf/gen/` with the TAF server (`staf`) |
 | `taf/map1_q2_structured.F90` | GOTO-free `map1_q2`, substituted only in the TAF input copy (see below) |
 | `taf/gen/` | TAF output: the forward modules again, plus the `_tl` and `_ad` routines. `taf.log` is the TAF log; `fv_mapz_tafinput.f90` is the exact fv_mapz input given to TAF |
+| `taf/gen_gchp/` | the TAF output as GCHP compiles it: all modules renamed (`stb_*`, `adj_*`), lines ≤ 132 columns (`tools/make_gen_gchp.py`, run by `run_taf.sh`) |
+| `gchp/adv_adj_discrete.F90` | the adapter between GCHP (AdvCore) and the generated code: init from GCHP's real gridstruct/flags/domain, one adjoint step, one forward step, convention check |
+| `gchp/sources.cmake`, `gchp/patches/` | the GCHP build (fvdycore CMake include) and the AdvCore patch (`ADV_ADJ_METHOD: discrete_linear`) |
+| `gchp/HANDOFF_PLEIADES.md` | how to apply, build and validate in GCHP (task 4) |
+| `driver/test_gchp_adapter.F90` | the adapter in a GCHP-like build (real fv_arrays.F90 / fv_mp_mod.F90, gen_gchp) |
 | `tools/compare_decomp.py` | compares the per-rank fields of two decompositions |
+| `tools/check_conventions.py` | compares the advection inputs of an adjoint run with those of the forward run (GCHP output) |
 | `run_tests.sh` | one face: prep + both tests for a list of cases |
 | `results/` | test outputs referred to in STATUS.md |
 
@@ -46,6 +52,8 @@ make mpi
 mpirun -n 6  build_mpi/test_halo 1                         # layout 1: one rank per face
 mpirun -n 24 build_mpi/test_adv <dir> 2 17 2 [wind_scale]  # layout 2: 2 x 2 ranks per face
 mpirun -n 24 build_mpi/test_chain <chain dir> 48 <receptors.txt> 2   # <chain dir>/sNN/f1..f6
+make gchp                                                  # the adapter, GCHP-like build
+mpirun -n 6 build_gchp/test_gchp_adapter <dir> 1
 
 taf/run_taf.sh           # regenerate taf/gen after changing a differentiated routine
 ```
