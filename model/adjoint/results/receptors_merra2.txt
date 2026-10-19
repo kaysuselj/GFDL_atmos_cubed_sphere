@@ -1,0 +1,8 @@
+# name F,j,i level   (F 1-based, j and i 0-based, GEOS-Chem level surface first), for traj/merra2
+# the T2 point receptors (baselines/T2/receptors.txt: face 0-based there)
+tropical_10N 1,14,14 10
+jet_30N 1,19,14 31
+# seam and corner cells of face 4 at the T2 tropical level (real winds cross the edges)
+onseam_f4 4,0,11 10
+corner_f4 4,0,0 10
+corner_f4_ne 4,23,23 10

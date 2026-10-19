@@ -1,0 +1,35 @@
+C-grid halo CX/CY: FMS exchange vs file, max rel. diff =  0.00E+00
+C-grid halo MFX/MFY: FMS exchange vs file, max rel. diff =  0.00E+00
+q halo: FMS exchange vs neighbouring faces in the file, max |diff| =  0.00E+00
+chain ../merra2_chain, steps 48, hord_tr kord_tr   2  17
+receptors:  5, level k = 63
+mass-fixer factor s0: min, max over the steps  9.9999988779569571E-01  1.0000000048973898E+00
+
+=== mass fixer frozen (s0 per step): linear operator
+receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              <TL x, e_r>          adj/FD - 1   adj vs TL   |adj-TL|/(|x||lambda|)
+tropical_10N     1  15  15  63 -2.8450360952675458E-01 -2.8450360952676274E-01 -2.8450360952676290E-01    2.86E-14    5.85E-16    1.08E-17
+jet_30N          1  15  20  42 -9.7562466162143586E-09 -9.7562250301449484E-09 -9.7562250301441444E-09   -2.21E-06    8.24E-14    7.50E-23
+onseam_f4        4  12   1  63  1.7267623941063404E-01  1.7267623941066323E-01  1.7267623941066318E-01    1.69E-13    3.21E-16    3.55E-18
+corner_f4        4   1   1  63 -7.2597524384272463E-03 -7.2597524386945828E-03 -7.2597524386945663E-03    3.68E-11    2.27E-15    6.37E-19
+corner_f4_ne     4  24  24  63  1.7102688596505316E-03  1.7102688596859310E-03  1.7102688596859442E-03    2.07E-11    7.73E-15    9.42E-19
+
+=== mass fixer s(q), linearized around the base trajectory
+receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              <TL x, e_r>          adj/FD - 1   adj vs TL   |adj-TL|/(|x||lambda|)
+tropical_10N     1  15  15  63 -2.8450351700067023E-01 -2.8450351700049248E-01 -2.8450351700049287E-01   -6.25E-13    1.37E-15    2.52E-17
+jet_30N          1  15  20  42  8.2325316779341170E-08  8.2325479981562354E-08  8.2325479981847500E-08    1.98E-06    3.46E-12    2.66E-20
+onseam_f4        4  12   1  63  1.7267633194552326E-01  1.7267633194571574E-01  1.7267633194571635E-01    1.11E-12    3.54E-15    3.90E-17
+corner_f4        4   1   1  63 -7.2596598915399624E-03 -7.2596598913716509E-03 -7.2596598913717714E-03   -2.32E-11    1.66E-14    4.66E-18
+corner_f4_ne     4  24  24  63  1.7103614503937144E-03  1.7103614505433323E-03  1.7103614505433475E-03    8.75E-11    8.87E-15    1.08E-18
+
+ALL TESTS PASSED (|<TL x, e_r> - <x, AD e_r>| / (|x| |AD e_r|) < 1e-13 for every receptor)
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   PID 47745 RUNNING AT MT-407221
+=   EXIT CODE: 9
+=   CLEANING UP REMAINING PROCESSES
+=   YOU CAN IGNORE THE BELOW CLEANUP MESSAGES
+===================================================================================
+YOUR APPLICATION TERMINATED WITH THE EXIT STRING: Killed: 9 (signal 9)
+This typically refers to a problem with your application.
+Please see the FAQ page for debugging suggestions

@@ -42,7 +42,7 @@ program test_chain
   character(len=32) :: rname(maxrec)
   integer :: rcell(4, maxrec)                      !< tile, i, j, k (FV3 indices)
   real, allocatable :: qtraj(:,:,:,:,:), s0(:), x(:,:,:,:), tlx(:,:,:,:), lam(:,:,:,:), qp(:,:,:,:), qm(:,:,:,:)
-  real :: scale, eps, fd, ad, tl, jp, jm
+  real :: scale, eps, fd, ad, tl, jp, jm, xnorm, lnorm, err
   logical :: root, frozen
   character(len=256) :: line
   integer :: mloop
@@ -118,7 +118,7 @@ program test_chain
            write(*,'(a)') '=== mass fixer s(q), linearized around the base trajectory'
         endif
         write(*,'(a)') 'receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              ' // &
-                       '<TL x, e_r>          adj/FD - 1   adj vs TL'
+                       '<TL x, e_r>          adj/FD - 1   adj vs TL   |adj-TL|/(|x||lambda|)'
      endif
      ! TL through all steps
      tlx = x
@@ -150,15 +150,20 @@ program test_chain
         jp = backend_allsum(cell_value(qp, rcell(:, ir)))
         jm = backend_allsum(cell_value(qm, rcell(:, ir)))
         fd = (jp - jm) / (2.*eps*scale)
-        if (abs(ad - tl) > 1.e-12*max(abs(ad), abs(tl))) nfail = nfail + 1
-        if (root) write(*,'(a14,4i4,3es24.16,es12.2,es12.2)') rname(ir), rcell(:, ir), fd, ad, tl, &
-             ad/fd - 1., abs(ad - tl)/max(abs(ad), abs(tl))
+        ! dot-test error on the scale of the inner product (Cauchy-Schwarz bound |<x, lambda>| <= |x||lambda|):
+        ! relative to |J| it is not meaningful when J is a small difference of large terms
+        xnorm = sqrt(backend_allsum(sum(x*x)))
+        lnorm = sqrt(backend_allsum(sum(lam*lam)))
+        err = abs(ad - tl) / max(xnorm*lnorm, tiny(1.))
+        if (err > 1.e-13) nfail = nfail + 1
+        if (root) write(*,'(a14,4i4,3es24.16,3es12.2)') rname(ir), rcell(:, ir), fd, ad, tl, &
+             ad/fd - 1., abs(ad - tl)/max(abs(ad), abs(tl)), err
      enddo
   enddo
   if (root) then
      write(*,*)
      if (nfail == 0) then
-        write(*,'(a)') 'ALL TESTS PASSED (adjoint = transpose of the TL to 1e-12 for every receptor)'
+        write(*,'(a)') 'ALL TESTS PASSED (|<TL x, e_r> - <x, AD e_r>| / (|x| |AD e_r|) < 1e-13 for every receptor)'
      else
         write(*,'(a,i3,a)') 'FAILED: ', nfail, ' receptor(s)'
      endif

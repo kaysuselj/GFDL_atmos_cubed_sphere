@@ -1,0 +1,18 @@
+C-grid halo CX/CY: FMS exchange vs file, max rel. diff =  0.00E+00
+C-grid halo MFX/MFY: FMS exchange vs file, max rel. diff =  0.00E+00
+q halo: FMS exchange vs neighbouring faces in the file, max |diff| =  0.00E+00
+chain ../tiltedrot_chain, steps 48, hord_tr kord_tr   2  17
+receptors:  2, level k = 52
+mass-fixer factor s0: min, max over the steps  9.9999999992102695E-01  9.9999999999934785E-01
+
+=== mass fixer frozen (s0 per step): linear operator
+receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              <TL x, e_r>          adj/FD - 1   adj vs TL   |adj-TL|/(|x||lambda|)
+inside_f1        1  15  16  52  9.7143027493342120E-03  9.7143027494399764E-03  9.7143027494398133E-03    1.09E-11    1.68E-14    9.80E-18
+cross_f2_f1      2  14   5  52 -1.1380921619013827E-01 -1.1380921619003193E-01 -1.1380921619003226E-01   -9.34E-13    2.93E-15    2.21E-17
+
+=== mass fixer s(q), linearized around the base trajectory
+receptor       tile   i   j   k   FD (J+ - J-)/2eps        <lambda, x>              <TL x, e_r>          adj/FD - 1   adj vs TL   |adj-TL|/(|x||lambda|)
+inside_f1        1  15  16  52  9.6910579505785095E-03  9.6910579506682051E-03  9.6910579506680906E-03    9.26E-12    1.18E-14    6.88E-18
+cross_f2_f1      2  14   5  52 -1.1383246101286314E-01 -1.1383246101269191E-01 -1.1383246101269211E-01   -1.50E-12    1.71E-15    1.29E-17
+
+ALL TESTS PASSED (|<TL x, e_r> - <x, AD e_r>| / (|x| |AD e_r|) < 1e-13 for every receptor)

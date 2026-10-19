@@ -71,12 +71,15 @@ contains
     call domain_decomp(npx, npy, nregions, 0, .false., Atm, lay, io_layout)
   end subroutine backend_init
 
-  !> MPI_Finalize directly: fms_end hangs in this standalone setting (after the clock report)
+  !> End of the test programs: barrier, then exit. fms_end and MPI_Finalize both hang in this
+  !! standalone setting after repeated loads (MPICH 5.0.1, leftover FMS requests); all output is
+  !! written before.
   subroutine backend_finalize()
     integer :: ierr
     include 'mpif.h'
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-    call MPI_FINALIZE(ierr)
+    flush(6)
+    call exit(0)
   end subroutine backend_finalize
 
   integer function backend_rank()
