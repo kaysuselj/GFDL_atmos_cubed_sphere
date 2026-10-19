@@ -45,6 +45,11 @@ set (srcs
   model/fv_nesting.F90
   )
 
+# Discrete adjoint of the offline tracer advection (model/adjoint; ADV_ADJ_METHOD: discrete_linear)
+if (ADJOINT)
+  include (${CMAKE_CURRENT_SOURCE_DIR}/model/adjoint/gchp/sources.cmake)
+endif ()
+
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES MAPL GFTL_SHARED::gftl-shared esmf)
