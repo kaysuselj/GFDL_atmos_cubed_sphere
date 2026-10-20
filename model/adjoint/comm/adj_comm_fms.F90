@@ -30,7 +30,8 @@
 !! back-end at GCHP's own domain (FV_Atm(1)%domain) and bounds; fms_init etc. are done by GCHP.
 module adj_backend_mod
   use mpp_mod,         only: mpp_pe, mpp_npes, mpp_sum, mpp_max, mpp_set_current_pelist, mpp_get_current_pelist
-  use mpp_domains_mod, only: domain2d, mpp_get_boundary, mpp_update_domains, mpp_update_domains_ad, CGRID_NE
+  use mpp_domains_mod, only: domain2d, mpp_get_boundary, mpp_update_domains, mpp_update_domains_ad, CGRID_NE, &
+                             mpp_get_global_domain
   use fms_mod,         only: fms_init
   use fv_mp_mod,       only: mp_start, mp_assign_gid, domain_decomp, group_halo_update_type, &
                              start_group_halo_update, complete_group_halo_update
@@ -39,7 +40,7 @@ module adj_backend_mod
   private
   public :: multiface, qhalo_fill, qhalo, backend_init, backend_attach, backend_finalize, backend_rank, &
             backend_nranks, backend_bounds, backend_cgrid_halo, backend_allsum, backend_allmax
-  public :: halo_q, halo_q_ad, global_sum, reduce_max, Atm
+  public :: halo_q, halo_q_ad, global_sum, reduce_max, Atm, backend_set_halo_ad, backend_halo_test
 
   logical, parameter :: multiface = .true.
   logical, save :: qhalo_fill = .false.              !< not used on six faces (real exchange)
@@ -54,6 +55,15 @@ module adj_backend_mod
   integer, parameter :: ng = 3
   type(group_halo_update_type), save :: q_group
   integer, save :: q_group_nk = -1
+  !> adjoint of the q halo update: 1 = own transpose (default), 0 = FMS mpp_update_domains_ad.
+  !! mpp_update_domains_ad is wrong on the cubed sphere when the subdomains are not square (GCHP on
+  !! 48 cores at C24, 12x6 per face: it creates values from a zero adjoint next to the face edges,
+  !! 2026-10-19); it was only ever tested on square layouts. The own transpose is built from the
+  !! forward exchange itself (halo_q of the global cell index gives the source of every halo
+  !! point), so it is the exact transpose of the update the forward uses, for any layout.
+  integer, save :: halo_ad_mode = 1
+  integer, allocatable, save :: hsrc(:,:)            !< global source index of each halo point (-1: none)
+  integer, save :: hsrc_nk = -1, nglob = 0, nface = 0
 
 contains
 
@@ -91,7 +101,133 @@ contains
     bis = is; bie = ie; bjs = js; bje = je; btile = tile
     bisd = is - ng; bied = ie + ng; bjsd = js - ng; bjed = je + ng
     q_group_nk = -1
+    if (allocated(hsrc)) deallocate(hsrc)
+    hsrc_nk = -1
   end subroutine backend_attach
+
+  !> 'own' (default) or 'fms': implementation of halo_q_ad (see halo_ad_mode)
+  subroutine backend_set_halo_ad(mode)
+    character(len=*), intent(in) :: mode
+    select case (trim(mode))
+    case ('own'); halo_ad_mode = 1
+    case ('fms'); halo_ad_mode = 0
+    case default; error stop 'backend_set_halo_ad: own or fms'
+    end select
+  end subroutine backend_set_halo_ad
+
+  !> source map of the q halo update: run the forward update (halo_q) on the global cell index
+  !! (0-based, face by face) with -1 in the halos; every halo point then holds the index of the
+  !! interior cell it copies, or -1 if the update leaves it alone. nk: level count of the q
+  !! group (halo_q keeps one group per field shape).
+  subroutine build_halo_map(nk)
+    integer, intent(in) :: nk
+    real, allocatable :: idx(:,:,:)
+    integer :: i, j, nmiss, a(1)
+    if (hsrc_nk == nk) return
+    call mpp_get_global_domain(dom, xsize=nface)
+    nglob = 6 * nface * nface
+    allocate(idx(bisd:bied, bjsd:bjed, nk))
+    idx = -1.
+    do j = bjs, bje
+       do i = bis, bie
+          idx(i, j, :) = real((btile - 1) * nface * nface + (j - 1) * nface + (i - 1))
+       enddo
+    enddo
+    call halo_q(idx)
+    if (allocated(hsrc)) deallocate(hsrc)
+    allocate(hsrc(bisd:bied, bjsd:bjed))
+    hsrc = -1
+    nmiss = 0
+    do j = bjsd, bjed
+       do i = bisd, bied
+          if (i >= bis .and. i <= bie .and. j >= bjs .and. j <= bje) cycle
+          if (idx(i, j, 1) >= 0.) then
+             hsrc(i, j) = nint(idx(i, j, 1))
+          else
+             nmiss = nmiss + 1
+          endif
+       enddo
+    enddo
+    a(1) = nmiss
+    call mpp_sum(a, 1)
+    if (mpp_pe() == 0) write(*,*) 'adj_backend: own halo adjoint, C', nface, ', halo points without a source', &
+                                  ' (cube corners) on all ranks:', a(1)
+    hsrc_nk = nk
+    deallocate(idx)
+  end subroutine build_halo_map
+
+  !> transpose of halo_q: every halo point adds its adjoint to the interior cell it was copied from
+  !! (global sum over ranks of a global-index buffer), then is zeroed; halo points the update
+  !! leaves alone keep their adjoint (identity)
+  subroutine halo_q_ad_own(q_ad)
+    real, intent(inout) :: q_ad(:,:,:)
+    real, allocatable :: g(:)
+    integer :: i, j, k, nk, s, li, lj
+    nk = size(q_ad, 3)
+    call build_halo_map(nk)
+    allocate(g(nglob * nk))
+    g = 0.
+    do j = bjsd, bjed
+       lj = j - bjsd + 1
+       do i = bisd, bied
+          s = hsrc(i, j)
+          if (s < 0) cycle
+          li = i - bisd + 1
+          do k = 1, nk
+             g(s + 1 + (k - 1) * nglob) = g(s + 1 + (k - 1) * nglob) + q_ad(li, lj, k)
+             q_ad(li, lj, k) = 0.
+          enddo
+       enddo
+    enddo
+    call mpp_sum(g, nglob * nk)
+    do j = bjs, bje
+       lj = j - bjsd + 1
+       do i = bis, bie
+          li = i - bisd + 1
+          s = (btile - 1) * nface * nface + (j - 1) * nface + (i - 1)
+          do k = 1, nk
+             q_ad(li, lj, k) = q_ad(li, lj, k) + g(s + 1 + (k - 1) * nglob)
+          enddo
+       enddo
+    enddo
+    deallocate(g)
+  end subroutine halo_q_ad_own
+
+  !> dot-product test of the q halo update and both adjoints on this run's layout:
+  !! <H x, y> = <x, H^T y> over the data domains of all ranks, and H^T 0 = 0
+  subroutine backend_halo_test(nk)
+    integer, intent(in) :: nk
+    real, allocatable :: x(:,:,:), y(:,:,:), hx(:,:,:), hty(:,:,:)
+    real :: s(3), zmax
+    integer :: mode, keep, seed_n
+    integer, allocatable :: seed(:)
+    allocate(x(bisd:bied, bjsd:bjed, nk), y(bisd:bied, bjsd:bjed, nk), hx(bisd:bied, bjsd:bjed, nk), &
+             hty(bisd:bied, bjsd:bjed, nk))
+    call random_seed(size=seed_n); allocate(seed(seed_n)); seed = 12345 + 7919 * mpp_pe()
+    call random_seed(put=seed)
+    call random_number(x); call random_number(y)
+    x = x - 0.5; y = y - 0.5
+    hx = x
+    call halo_q(hx)
+    keep = halo_ad_mode
+    do mode = 0, 1
+       halo_ad_mode = mode
+       hty = y
+       call halo_q_ad(hty)
+       s(1) = sum(hx * y); s(2) = sum(x * hty)
+       hty = 0.
+       call halo_q_ad(hty)
+       s(3) = 0.
+       call mpp_sum(s(1:2), 2)
+       zmax = maxval(abs(hty))
+       call mpp_max(zmax)
+       if (mpp_pe() == 0) write(*,'(a,a4,a,es24.16,a,es24.16,a,es10.2,a,es10.2)') ' ADVCORE halo test ', &
+            merge('own ', 'fms ', mode == 1), ' <Hx,y>=', s(1), ' <x,HTy>=', s(2), &
+            ' rel.diff=', abs(s(1) - s(2)) / max(abs(s(1)), tiny(1.)), ' max|HT 0|=', zmax
+    enddo
+    halo_ad_mode = keep
+    deallocate(x, y, hx, hty, seed)
+  end subroutine backend_halo_test
 
   !> End of the test programs: barrier, then exit. fms_end and MPI_Finalize both hang in this
   !! standalone setting after repeated loads (MPICH 5.0.1, leftover FMS requests); all output is
@@ -169,6 +305,10 @@ contains
   !> adjoint of halo_q
   subroutine halo_q_ad(q_ad)
     real, intent(inout) :: q_ad(:,:,:)
+    if (halo_ad_mode == 1) then
+       call halo_q_ad_own(q_ad)
+       return
+    endif
     call mpp_update_domains_ad(q_ad, dom)
   end subroutine halo_q_ad
 
